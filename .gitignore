@@ -1,0 +1,5 @@
+./data/8/
+./data/1-7/
+*.png
+__pycache__
+.cache
