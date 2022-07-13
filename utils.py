@@ -21,7 +21,7 @@ transform = T.Compose([
 ])
 
 
-def save_list_to_file(path, lst):
+def dump_list(path, lst):
     with open(path, 'w') as f:
         for x in lst:
             f.write(f"{x}\n")

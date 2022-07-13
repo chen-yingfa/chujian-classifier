@@ -1,17 +1,17 @@
 import argparse
+import os
+
 
 def get_parser():
     p = argparse.ArgumentParser()
     p.add_argument(
-        '-orc', '--oracle',
-        type=str,
-        help='select dataset, value = 300/600/1600, default = 300',
-        default='300')
+        '--data_dir',
+        default='./data/8')
     p.add_argument(
-        '-exp', '--experiment_root',
+        '-exp', '--ckpt_dir',
         type=str,
         help='root where to store models, losses and accuracies',
-        default='./' + os.sep + 'model_save')
+        default='./ckpts')
     # 改了，原100
     p.add_argument(
         '-nep', '--epochs',

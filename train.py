@@ -1,4 +1,3 @@
-# import torch.nn.functional as F
 import torch
 import os
 from collections import Counter
@@ -10,12 +9,12 @@ from torchvision import datasets
 
 # from dataloader import *
 # from testModel import test_model
-from modeling.model import ProtoNet, prototypical_loss, euclidean_dist
+from modeling.model import ProtoNet, prototypical_loss
 # from source.parser import get_parser
 # from source.sampler import PrototypicalBatchSampler
 from arguments import get_parser
 from sampler import PrototypicalBatchSampler
-from utils import set_seed, mean, transform, dump_list_to_file
+from utils import set_seed, mean, transform
 
 # from torch.utils import data
 # from torch.utils.data import DataLoader
@@ -27,25 +26,27 @@ from utils import set_seed, mean, transform, dump_list_to_file
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 
-def init_dataloader(opt, mode):
+def get_dataloader(args, mode):
     # dataset
     global n_classes
-    dataset = datasets.ImageFolder(
-        "./data_oct/" + mode + "_" + opt.oracle, transform=transform)
+    # dataset = datasets.ImageFolder(
+        # "./data_oct/" + mode + "_" + args.data_dir, transform=transform)
+    dataset = datasets.ImageFolder('./data/8')
     n_classes = len(np.unique([dataset[i][1] for i in range(len(dataset))]))
     print("n_classes", mode, n_classes)  # 361
-    if n_classes < opt.classes_per_it_tr or n_classes < opt.classes_per_it_val:
+    if n_classes < args.classes_per_it_tr or n_classes < args.classes_per_it_val:
         raise (Exception('There are not enough classes in the dataset in order ' +
                          'to satisfy the chosen classes_per_it. Decrease the ' +
                          'classes_per_it_{tr/val} option and try again.'))
+    exit()
+    
     # sampler
-
     if 'train' in mode:
-        classes_per_it = opt.classes_per_it_tr
-        num_samples = opt.num_support_tr + opt.num_query_tr
+        classes_per_it = args.classes_per_it_tr
+        num_samples = args.num_support_tr + args.num_query_tr
     else:  # validation和test用同一组..？
-        classes_per_it = opt.classes_per_it_val
-        num_samples = opt.num_support_val + opt.num_query_val
+        classes_per_it = args.classes_per_it_val
+        num_samples = args.num_support_val + args.num_query_val
     labels = [dataset[i][1] for i in range(len(dataset))]
     # print ( classes_per_it, num_samples )  # 60  , 10
     # classes_per_it_tr number of random classes per episode for training, default=60'
@@ -55,7 +56,7 @@ def init_dataloader(opt, mode):
     batch_sampler = PrototypicalBatchSampler(labels=labels,
                                              classes_per_it=classes_per_it,
                                              num_samples=num_samples,
-                                             iterations=opt.iterations)
+                                             iterations=args.iterations)
     # dataloader
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_sampler=batch_sampler)
@@ -99,7 +100,7 @@ def train(opt, tr_dataloader, model, optim, lr_scheduler, val_dataloader=None):
 
         torch.save(
             model.state_dict(),
-            os.path.join(opt.experiment_root, 'model_{}.pth'.format(epoch))
+            os.path.join(opt.ckpt_dir, 'model_{}.pth'.format(epoch))
         )
 
         lr_scheduler.step()
@@ -107,31 +108,31 @@ def train(opt, tr_dataloader, model, optim, lr_scheduler, val_dataloader=None):
     return 0
 
 
-def initialize(options):
+def initialize(args):
     '''
     初始化训练所需的模型及数据集
     '''
-    if not os.path.exists(options.experiment_root):
-        os.makedirs(options.experiment_root)
-    if torch.cuda.is_available() and not options.cuda:
+    if not os.path.exists(args.ckpt_dir):
+        os.makedirs(args.ckpt_dir)
+    if torch.cuda.is_available() and not args.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-    set_seed(options)
-    tr_dataloader = init_dataloader(options, 'train')
+    set_seed(args)
+    tr_dataloader = get_dataloader(args, 'train')
     model = ProtoNet().to(device)
     optim = torch.optim.Adam(params=model.parameters(),
-                             lr=options.learning_rate)
+                             lr=args.learning_rate)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optim,
-                                                   gamma=options.lr_scheduler_gamma,
-                                                   step_size=options.lr_scheduler_step)
+                                                   gamma=args.lr_scheduler_gamma,
+                                                   step_size=args.lr_scheduler_step)
 
     return tr_dataloader, model, optim, lr_scheduler
 
 
 def main():
-    options = get_parser().parse_args()
+    args = get_parser().parse_args()
 
-    tr_dataloader, model, optim, lr_scheduler = initialize(options)
+    tr_dataloader, model, optim, lr_scheduler = initialize(args)
     for batch in tr_dataloader:
         x, y = batch
         print(x.shape, y.shape)
@@ -146,10 +147,10 @@ def main():
     #     lr_scheduler=lr_scheduler
     # )
 
-    # 加载训练好的model
-    device = 'cuda:0' if torch.cuda.is_available() and options.cuda else 'cpu'
+    # TODO: Load best checkpoint
+    device = 'cuda:0' if torch.cuda.is_available() and args.cuda else 'cpu'
     model = ProtoNet().to(device)
-    for epoch in range(options.epochs):
+    for epoch in range(args.epochs):
         print("===========model No.{}===========".format(epoch))
         # model.load_state_dict(
         #     torch.load("./model_save/model_{}.pth".format(epoch))
