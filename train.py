@@ -14,36 +14,16 @@ from modeling.model import ProtoNet, prototypical_loss, euclidean_dist
 # from source.sampler import PrototypicalBatchSampler
 from arguments import get_parser
 from sampler import PrototypicalBatchSampler
+from utils import set_seed, mean, transform
 
 # from torch.utils import data
 # from torch.utils.data import DataLoader
-from torchvision import datasets, transforms as T
+# from torchvision import datasets, transforms as T
 
 
-transform = T.Compose([
-    T.Resize([50, 50]),
-    # T.Grayscale(),
-    T.ToTensor(),
-    T.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5])
-])
 
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-
-
-def mean(arrs):
-    return sum(arrs) * 1.0 / len(arrs)
-
-
-def init_seed(opt):
-    '''
-    Disable cudnn to maximize reproducibility
-    torch.cuda.cudnn_enabled = False
-    '''
-    # 如果每次运行代码时都设置相同的seed，则每次生成的随机数也相同
-    np.random.seed(opt.manual_seed)
-    torch.manual_seed(opt.manual_seed)
-    torch.cuda.manual_seed(opt.manual_seed)
 
 
 def init_dataloader(opt, mode):
@@ -141,7 +121,7 @@ def initialize(options):
     if torch.cuda.is_available() and not options.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-    init_seed(options)
+    set_seed(options)
     tr_dataloader = init_dataloader(options, 'train')
     model = ProtoNet().to(device)
     optim = torch.optim.Adam(params=model.parameters(),
