@@ -1,6 +1,6 @@
-./data/8/
-./data/1-7/
-*.png
+data/8/
+data/1-7/
+# *.png
 __pycache__
 .cache
 .vscode

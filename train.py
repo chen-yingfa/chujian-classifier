@@ -6,6 +6,7 @@ from collections import Counter
 import numpy as np
 from tqdm import tqdm
 # from collections import *
+from torchvision import datasets
 
 # from dataloader import *
 # from testModel import test_model
@@ -14,7 +15,7 @@ from modeling.model import ProtoNet, prototypical_loss, euclidean_dist
 # from source.sampler import PrototypicalBatchSampler
 from arguments import get_parser
 from sampler import PrototypicalBatchSampler
-from utils import set_seed, mean, transform
+from utils import set_seed, mean, transform, dump_list_to_file
 
 # from torch.utils import data
 # from torch.utils.data import DataLoader
@@ -62,12 +63,6 @@ def init_dataloader(opt, mode):
     #     #print (e )
     #     asf
     return dataloader
-
-
-def save_list_to_file(path, thelist):
-    with open(path, 'w') as f:
-        for item in thelist:
-            f.write("%s\n" % item)
 
 
 def train(opt, tr_dataloader, model, optim, lr_scheduler, val_dataloader=None):

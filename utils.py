@@ -19,3 +19,9 @@ transform = T.Compose([
     T.ToTensor(),
     T.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5])
 ])
+
+
+def save_list_to_file(path, lst):
+    with open(path, 'w') as f:
+        for x in lst:
+            f.write(f"{x}\n")
