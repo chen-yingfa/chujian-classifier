@@ -33,12 +33,14 @@ def get_dataloader(args, mode):
         # "./data_oct/" + mode + "_" + args.data_dir, transform=transform)
     dataset = datasets.ImageFolder('./data/8')
     n_classes = len(np.unique([dataset[i][1] for i in range(len(dataset))]))
-    print("n_classes", mode, n_classes)  # 361
+    n_examples = len(dataset)
+    print(f'# examples: {n_examples}')
+    print(f"# classes: {mode} {n_classes}")  # 361
     if n_classes < args.classes_per_it_tr or n_classes < args.classes_per_it_val:
         raise (Exception('There are not enough classes in the dataset in order ' +
                          'to satisfy the chosen classes_per_it. Decrease the ' +
                          'classes_per_it_{tr/val} option and try again.'))
-    exit()
+    # exit()
     
     # sampler
     if 'train' in mode:
@@ -116,8 +118,8 @@ def initialize(args):
         os.makedirs(args.ckpt_dir)
     if torch.cuda.is_available() and not args.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-
-    set_seed(args)
+    print(f'Setting seed: {args.seed}')
+    set_seed(args.seed)
     tr_dataloader = get_dataloader(args, 'train')
     model = ProtoNet().to(device)
     optim = torch.optim.Adam(params=model.parameters(),

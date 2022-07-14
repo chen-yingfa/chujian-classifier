@@ -1,5 +1,6 @@
 data/8/
 data/1-7/
+data/small/
 # *.png
 __pycache__
 .cache

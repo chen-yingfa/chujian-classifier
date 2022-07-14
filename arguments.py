@@ -69,14 +69,12 @@ def get_parser():
                         help='number of samples per class to use as query for validation, default=15',
                         default=4)
     # 用来搞随机数
-    p.add_argument('-seed', '--manual_seed',
-                        type=int,
-                        help='input for the manual seeds initializations',
-                        default=7)
+    p.add_argument(
+        '--seed', type=int, default=0,
+        help='input for the manual seeds initializations',)
 
-    p.add_argument('--cuda',
-                        type=bool,
-                        help='enables cuda',
-                        default=True)
+    p.add_argument(
+        '--cuda', type=bool, default=True,
+        help='enables cuda',)
 
     return p

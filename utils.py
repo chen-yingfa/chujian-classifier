@@ -7,10 +7,10 @@ def mean(arrs):
     return sum(arrs) * 1.0 / len(arrs)
 
 
-def set_seed(opt):
-    np.random.seed(opt.manual_seed)
-    torch.manual_seed(opt.manual_seed)
-    torch.cuda.manual_seed(opt.manual_seed)
+def set_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
 
 
 transform = T.Compose([
