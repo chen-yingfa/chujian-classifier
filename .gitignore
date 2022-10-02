@@ -1,7 +1,8 @@
-data/8/
-data/1-7/
-data/small/
+data/8
+data/1-7
+data/small
 # *.png
 __pycache__
 .cache
 .vscode
+data/chujian

@@ -1,6 +1,8 @@
 import torch
+from torch import Tensor
 import torch.nn as nn
 from torch.nn import functional as F
+
 
 def conv_block(in_channels, out_channels):
     '''
@@ -33,8 +35,10 @@ class ProtoNet(nn.Module):
 
 class PrototypicalLoss(nn.Module):
     '''
-    Loss class deriving from Module for the prototypical loss function defined below
+    Loss class deriving from Module for the prototypical loss function defined
+    below
     '''
+
     def __init__(self, n_support):
         super(PrototypicalLoss, self).__init__()
         self.n_support = n_support
@@ -61,7 +65,11 @@ def euclidean_dist(x, y):
     return torch.pow(x - y, 2).sum(2)
 
 
-def prototypical_loss(input, target, n_support):
+def prototypical_loss(
+    hidden: Tensor,
+    labels: Tensor,
+    num_support: int
+):
     '''
     Inspired by https://github.com/jakesnell/prototypical-networks/blob/master/protonets/models/few_shot.py
 
@@ -71,49 +79,72 @@ def prototypical_loss(input, target, n_support):
     log_probability for each n_query samples for each one of the current
     classes, of appartaining to a class c, loss and accuracy are then computed
     and returned
-    Args:
-    - input: the model output for a batch of samples
-    - target: ground truth for the above batch of samples
+
+    Params:
+    - hidden: the model output for a batch of samples
+    - labels: ground truth for the above batch of samples
     - n_support: number of samples to keep in account when computing
       barycentres, for each one of the current classes
-    '''
-    target_cpu = target.to('cpu')  # 实际的标签
-    input_cpu = input.to('cpu')  # ProtoNet计算结果
-
-    def supp_idxs(c):
-        # FIXME when torch will support where as np
-        return target_cpu.eq(c).nonzero()[:n_support].squeeze(1)
+    '''  # noqa
+    labels = labels.to('cpu')   # (B)
+    hidden = hidden.to('cpu')   # (B, C)
 
     # FIXME when torch.unique will be available on cuda too
-    classes = torch.unique(target_cpu)  # 返回有哪些class（returns the unique elements of the input tensor）
+    # 返回有哪些 class（returns the unique elements of the input tensor）
+    classes = torch.unique(labels)
     n_classes = len(classes)
+
     # FIXME when torch will support where as np
     # assuming n_query, n_target constants
-    n_query = target_cpu.eq(classes[0].item()).sum().item() - n_support
-    # 每一个class的n_query+n_support数目都是一样的，所以取第一个class来算就行了，在这个episode里面取到的总样本数，减去n_support就是n_query
-    support_idxs = list(map(supp_idxs, classes))
-    # 对于每一个class（label），.eq判断target的每一位是否是这个label，.nonzero找出哪几位是target，[:n_support]从里面取出n_support作为支撑集，squeeze将其从n_support*1压缩为n_support的tensor
 
-    prototypes = torch.stack([input_cpu[idx_list].mean(0) for idx_list in support_idxs])  # 计算每一个label的c_k（representation）
+    # Occurrence of class[0] in labels - n_support
+    n_query = labels.eq(classes[0].item()).sum().item() - num_support
+
+    # 每一个 class 的 n_query + n_support 数目都是一样的，
+    # 所以取第一个 class 来算就行了，
+    # 在这个 episode 里面取到的总样本数减去 n_support 就是 n_query
+    support_idxs = [
+        labels.eq(c).nonzero()[:num_support].squeeze(1) for c in classes]
+    # 对于每一个 class（label），
+    # .eq 判断 target 的每一位是否是这个 label，
+    # .nonzero: return indices of all nonzero elements
+    # [:n_support] 从里面取出 n_support 作为支撑集，
+    # squeeze 将其从 (n_support, 1) 压缩为 n_support 的 tensor
+
+    prototypes = torch.stack([hidden[idx_list].mean(
+        0) for idx_list in support_idxs])  # 计算每一个label的c_k（representation）
+
     # FIXME when torch will support where as np
-    query_idxs = torch.stack(list(map(lambda c: target_cpu.eq(c).nonzero()[n_support:], classes))).view(-1)
+    # query_idxs = torch.stack(
+    #     list(map(lambda c: target_cpu.eq(c).nonzero()[n_support:], classes))
+    # )
+    query_idxs = torch.stack(
+        [labels.eq(c).nonzero()[num_support:] for c in classes])
+
+    query_idxs = query_idxs.view(-1)
+
     # 获取查询集的对应编号，但是最后那个view(-1)啥意思啊
 
-    query_samples = input.to('cpu')[query_idxs]
+    query_samples = hidden.to('cpu')[query_idxs]
     # 是按class的顺序排的
 
-    dists = euclidean_dist(query_samples, prototypes)  # (n_query*n_classes)*n_classes
+    # (n_query*n_classes)*n_classes
+    dists = euclidean_dist(query_samples, prototypes)
 
-    log_p_y = F.log_softmax(-dists, dim=1).view(n_classes, n_query, -1)  # n_classes*n_query*n_classes
+    # n_classes*n_query*n_classes
+    log_p_y = F.log_softmax(-dists, dim=1).view(n_classes, n_query, -1)
 
     target_inds = torch.arange(0, n_classes)  # 从0~n_classes-1的tensor
-    target_inds = target_inds.view(n_classes, 1, 1)  # n_classes*1*1，内容从0~n_classes-1
-    target_inds = target_inds.expand(n_classes, n_query, 1).long()  # n_claasses*n_query*1，从0~n_classes-1每个都有n_query个
+    # n_classes*1*1，内容从0~n_classes-1
+    target_inds = target_inds.view(n_classes, 1, 1)
+    # n_claasses*n_query*1，从0~n_classes-1每个都有n_query个
+    target_inds = target_inds.expand(n_classes, n_query, 1).long()
 
     loss_val = -log_p_y.gather(2, target_inds).squeeze().view(-1).mean()
-    _, y_hat = log_p_y.max(2)  # torch.max(Tensor,dim)返回两个值，第一个为储存着最大值的Tensor，第二维为储存着最大值对应的index的Tensor
+    # torch.max(Tensor,dim)返回两个值，第一个为储存着最大值的Tensor，第二维为储存着最大值对应的index的Tensor
+    _, y_hat = log_p_y.max(2)
     # y_hat:n_classes*n_query
     # target_inds:n_classes*n_query*1
     acc_val = y_hat.eq(target_inds.squeeze()).float().mean()
 
-    return loss_val,  acc_val
+    return loss_val, acc_val
