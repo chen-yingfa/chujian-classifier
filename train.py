@@ -7,7 +7,6 @@ import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision import datasets
 from torchvision import transforms
 
 from modeling.model import ProtoNet, prototypical_loss, euclidean_dist
@@ -17,12 +16,16 @@ from utils import set_seed, mean
 from dataset import ChujianDataset
 
 
-def get_dataloader(args: Namespace, mode: str) -> DataLoader:
+def get_dataloader(
+    args: Namespace,
+    mode: str,
+    img_size: tuple,
+) -> DataLoader:
     '''Return dataloader'''
-    assert Path(args.data_dir).exists()
+    assert Path(args.train_dir).exists()
 
     transform = transforms.Compose([
-        transforms.Resize((96, 96)),
+        transforms.Resize(img_size),
         transforms.ToTensor(),
         # TODO: Add more transformations: data augmentation, normalize etc.
         transforms.GaussianBlur(kernel_size=3),
@@ -32,8 +35,8 @@ def get_dataloader(args: Namespace, mode: str) -> DataLoader:
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
-    dataset = datasets.ImageFolder(args.data_dir, transform=transform)
-    # dataset = ChujianDataset(args.data_dir, transform=transform)
+    # dataset = datasets.ImageFolder(args.train_dir, transform=transform)
+    dataset = ChujianDataset(args.train_dir, transform=transform)
     num_classes = len(dataset.classes)
     num_examples = len(dataset)
     print(f'# examples: {num_examples}')
@@ -71,7 +74,7 @@ def get_dataloader(args: Namespace, mode: str) -> DataLoader:
     print('Instantiating DataLoader')
 
     def collate_fn(batch) -> Tuple[Tensor, Tensor]:
-        inputs = torch.stack([transform(x[0]) for x in batch])
+        inputs = torch.stack([x[0] for x in batch])
         labels = torch.LongTensor([x[1] for x in batch])
         return inputs, labels
 
@@ -132,10 +135,10 @@ def train(
             # Log
             if step % log_interval == 0:
                 log_stats = {
-                    'epoch': ep + step / steps_per_spoch,
+                    'epoch': round(ep + step / steps_per_spoch, 2),
                     'step': step,
-                    'acc': acc.item(),
-                    'loss': loss.item(),
+                    'acc': round(acc.item(), 4),
+                    'loss': round(loss.item(), 5),
                 }
                 print(log_stats)
 
@@ -155,7 +158,6 @@ def train(
 def initialize(
     args: Namespace
 ) -> Tuple[
-    DataLoader,
     nn.Module,
     torch.optim.Adam,
     torch.optim.lr_scheduler.StepLR,
@@ -169,9 +171,6 @@ def initialize(
     print(f'Setting seed: {args.seed}', flush=True)
     set_seed(args.seed)
 
-    print('Getting train dataloader')
-    train_dataloader = get_dataloader(args, 'train')
-
     print('Getting model')
     model = ProtoNet()
 
@@ -181,7 +180,7 @@ def initialize(
         optimizer=optim,
         gamma=args.lr_scheduler_gamma,
         step_size=args.lr_scheduler_step)
-    return train_dataloader, model, optim, scheduler
+    return model, optim, scheduler
 
 
 def get_device(cuda) -> str:
@@ -191,35 +190,76 @@ def get_device(cuda) -> str:
 
 
 def get_representation(
-    args: Namespace,
-    test_dataloader,
     model: ProtoNet,
-    full_size: int,
-) -> list:
+    dataset: ChujianDataset,
+    device: str,
+) -> Tensor:
     '''
-    Return a vector
-    '''
-    model.eval()
-    device = get_device(args.cuda)
-    test_iter_c = iter(test_dataloader)
-    print(full_size)
-    model_output = torch.empty(min(full_size, 100), 576)
+    Get the prototype representation of the dataset. This will feed all
+    examples in the dataset to the model, then average the output.
 
-    first = True
-    for batch_c in test_iter_c:
-        x_c = batch_c
-        print(x_c.size())
-        x_c = x_c.to(device)
-        if first:
-            model_output = model(x_c).detach().to('cpu')
-            first = False
+    Args:
+    '''
+    print(f'Getting representation for {len(dataset)} images')
+    data_loader = DataLoader(dataset, batch_size=50)
+    model.eval()
+    all_outputs = None
+    for i, batch_c in enumerate(data_loader):
+        inputs = batch_c
+        print('inputs.size', inputs.size())
+        inputs = inputs.to(device)
+        outputs = model(inputs).detach().cpu()
+        print('outputs.size', outputs.size())
+        if i == 0:
+            all_outputs = outputs
         else:
-            model_output = torch.cat(
-                (model_output, model(x_c).detach().to('cpu')), dim=0)
-    # print("model_output",model_output.size())
-    support_cpu = model_output.to('cpu')
-    prototypes = support_cpu.mean(0)
-    # print("prototpyes",prototypes.size())
+            all_outputs = torch.cat((all_outputs, outputs), dim=0)
+    prototypes = all_outputs.to('cpu').mean(0)
+
+    print("all_outputs.size", all_outputs.size())
+    print("prototypes.size", prototypes.size())
+    return prototypes
+
+
+def get_all_prototypes(
+    model: ProtoNet,
+    dataset: ChujianDataset,
+    num_classes: int,
+    device: str,
+    img_size: tuple,
+    hidden_dim: int,
+) -> Tensor:
+    '''
+    Get prototypes for each class. This will feed all examples in the dataset
+    to the model, then average the output for each class.
+
+    Returns:
+        Tensor of shape (num_classes, hidden_dim)
+    '''
+
+    model.eval()
+    # dataset = datasets.ImageFolder(args.test_dir, transform=transforms)
+    prototypes = torch.empty(num_classes, hidden_dim)
+    print(f'Prototypes size: {prototypes.size()}')
+
+    # Get representation of prototypes
+    lo = 0
+    for class_idx in range(num_classes):
+        # Get a dataset of all examples belonging to this class
+        hi = lo
+        while hi < len(dataset) and dataset[hi][1] == class_idx:
+            hi += 1
+        class_size = hi - lo
+        if class_size == 0:
+            raise NotImplementedError
+        class_dataset = torch.empty(class_size, 3, *img_size)
+        for i in range(lo, hi):
+            class_dataset[i - lo] = dataset[i][0].unsqueeze(0)
+
+        lo = hi
+        # Get the protoype of this class
+        prototypes[class_idx] = get_representation(
+            model, class_dataset, device)
     return prototypes
 
 
@@ -227,52 +267,42 @@ def test(
     args: Namespace,
     model: ProtoNet,
     num_classes: int,
+    img_size: tuple = (50, 50),
+    hidden_dim: int = 576,
 ) -> None:
     '''
     Perform test on model
     '''
-
     transform = transforms.Compose([
-        transforms.Resize((96, 96)),
+        transforms.Resize(img_size),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
-
-    model.eval()
-    # dataset = datasets.ImageFolder(args.test_dir, transform=transforms)
-    dataset = ChujianDataset(args.test_dir, transform=transform)
-    prototypes = torch.empty(num_classes, 576)
-    print(f'Prototypes size: {prototypes.size()}')
-
-    # Get representation of prototypes
-    head = 0
-    tail = 0
-    class_idx = 0
-    # loop all classes
-    while class_idx < num_classes:
-        while tail < len(dataset) and dataset[tail][1] == class_idx:
-            tail += 1
-        class_dataset = torch.empty(tail - head, 3, 50, 50)
-        for i in range(head, tail):
-            class_dataset[i-head] = dataset[i][0].unsqueeze(0)
-        prototypes[class_idx] = get_representation(
-            args,
-            DataLoader(class_dataset, batch_size=600),
-            model,
-            len(class_dataset),
-        )
-        head = tail
-        class_idx += 1
-
-    print("prototypes", prototypes.size())
     device = get_device(args.cuda)
-    dataset = ChujianDataset(args.test_dir, transform=transform)
+    # Use training data to get prototypes for each class.
+    # TODO: This needs to take into account for classes that are not in the
+    # training set.
+    train_dataset = ChujianDataset(args.train_dir, transform=transform)
+    prototypes = get_all_prototypes(
+        model,
+        dataset=train_dataset,
+        num_classes=num_classes,
+        device=device,
+        img_size=img_size,
+        hidden_dim=hidden_dim,
+    )
+    print("prototypes", prototypes.size())
+
+    batch_size = 50
+    print('------ Testing ------')
+    print(f'Batch size: {batch_size}')
     num_correct_1 = 0
     num_correct_3 = 0
     num_correct_5 = 0
     num_correct_10 = 0
+    dataset = ChujianDataset(args.test_dir, transform=transform)
     num_examples = len(dataset)
-    loader = DataLoader(dataset, batch_size=50)
+    loader = DataLoader(dataset, batch_size=batch_size)
 
     def get_num_correct(
         labels: Tensor,
@@ -339,16 +369,12 @@ def main() -> None:
     for k, v in vars(args).items():
         print(f'{k:>20}: {v}')
     print('------------------')
-    train_loader, model, optim, scheduler = initialize(args)
-
-    # print('Logging the shape of data')
-    # for batch in train_loader:
-    #     x, y = batch
-    #     print('x.shape', x.shape)
-    #     print('y.shape', y.shape)
-    #     exit()
+    model, optim, scheduler = initialize(args)
+    IMG_SIZE = (50, 50)
 
     if 'train' in args.mode:
+        print('Getting train dataloader')
+        train_loader = get_dataloader(args, 'train', IMG_SIZE)
         train(
             args=args,
             train_loader=train_loader,
@@ -366,7 +392,7 @@ def main() -> None:
             model = load_model(ckpt_file)
             model.to(device)
             print(f"------ testing {ckpt_file} ------")
-            test(args, model, num_classes=NUM_CLASSES)
+            test(args, model, num_classes=NUM_CLASSES, img_size=IMG_SIZE)
             raise NotImplementedError
 
 

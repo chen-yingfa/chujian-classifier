@@ -3,7 +3,7 @@ import argparse
 
 def get_parser():
     p = argparse.ArgumentParser()
-    p.add_argument('--data_dir', default='./data/chujian/glyphs_small_train')
+    p.add_argument('--train_dir', default='./data/chujian/glyphs_small_train')
     p.add_argument('--test_dir', default='./data/chujian/glyphs_small_test')
     p.add_argument(
         '-exp', '--ckpt_dir',

@@ -85,11 +85,6 @@ class PrototypicalBatchSampler(object):
             cur_slice_lo = 0
             # for i, c in enumerate(self.classes[class_indices]):
             for class_idx in class_idxs:
-                # 抽取哪一行（哪个label）  译者注owo:找到classes中标号为c的元素下标
-                # label_idx = torch.arange(len(self.classes)).long()[
-                #     self.classes == c].item()
-
-                # Why not just label_idx = c.item() ???
                 '''
                 If self.classes = [1, 2, 5]
                 class_indices = [0, 2]

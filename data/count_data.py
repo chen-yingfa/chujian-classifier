@@ -1,7 +1,7 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-data_dir = Path('./chujian/glyphs_small')
+data_dir = Path('./chujian/glyphs_small_train')
 # data_dir = Path('./chujian/glyphs')
 # data_dir = Path('/data/private/chenyingfa/chujian/glyphs')
 glyph_cnts = {}

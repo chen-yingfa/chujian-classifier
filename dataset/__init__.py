@@ -4,7 +4,14 @@ from PIL import Image
 
 
 class ChujianDataset(Dataset):
-    '''Replacement for ImageFolder that supports empty subdirs.'''
+    '''
+    Replacement for ImageFolder that supports empty subdirs.
+    
+    Attributes:
+        classes (list): List of the class names sorted alphabetically.
+        class_to_idx (dict): Dict with items (class_name, class_index).
+        imgs (list): List of (image path, class_index) tuples
+    '''
     def __init__(
         self,
         root: str,
@@ -14,20 +21,27 @@ class ChujianDataset(Dataset):
         self.root = Path(root)
         self.transform = transform
 
-        self.images = []
+        # Loop through root directory and get all classes and image paths.
+        self.imgs = []
         self.classes = []
-        for i, glyph_dir in enumerate(self.root.iterdir()):
-            for image in glyph_dir.iterdir():
-                self.images.append(image)
-                self.classes.append(i)
+        self.class_to_idx = {}
+        for glyph_dir in sorted(self.root.iterdir()):
+            if not glyph_dir.is_dir():
+                continue
+            self.classes.append(glyph_dir.name)
+            cls_idx = len(self.classes) - 1
+            for image_path in glyph_dir.iterdir():
+                self.imgs.append((image_path, cls_idx))
 
-    def __getitem__(self, idx: int):
-        image = self.images[idx]
-        label = self.classes[idx]
+    def __getitem__(self, idx: int) -> tuple:
+        '''
+        Return (image, class_index)
+        '''
+        image, label = self.imgs[idx]
         image = Image.open(image)
         if self.transform:
             image = self.transform(image)
         return image, label
 
     def __len__(self):
-        return len(self.images)
+        return len(self.imgs)
