@@ -3,11 +3,8 @@ import argparse
 
 def get_parser():
     p = argparse.ArgumentParser()
-    p.add_argument(
-        '--data_dir',
-        # default='/data/private/chenyingfa/chujian/glyphs',
-        default='./data/chujian/glyphs_small',
-    )
+    p.add_argument('--data_dir', default='./data/chujian/glyphs_small_train')
+    p.add_argument('--test_dir', default='./data/chujian/glyphs_small_test')
     p.add_argument(
         '-exp', '--ckpt_dir',
         help='root where to store models, losses and accuracies',
@@ -37,20 +34,21 @@ def get_parser():
     p.add_argument(
         '-cTr', '--classes_per_it_tr',
         type=int,
-        default=2,
+        default=20,
         help='number of random classes per episode for training, default=60',
     )
 
     p.add_argument(
         '-nsTr', '--num_support_tr',
         type=int,
-        default=3,
+        default=5,
         help='number of samples per class to use as support for training',
     )
 
     p.add_argument(
         '-nqTr', '--num_query_tr',
-        type=int, default=1,
+        type=int,
+        default=5,
         help='number of samples per class to use as query for training',
     )
 
@@ -74,13 +72,8 @@ def get_parser():
         help='number of samples per class to use as query for validation',
         default=4,
     )
-    # 用来搞随机数
-    p.add_argument(
-        '--seed', type=int, default=0,
-        help='input for the manual seeds initializations',)
-
-    p.add_argument(
-        '--cuda', type=bool, default=True,
-        help='enables cuda',)
+    p.add_argument('--seed', type=int, default=0)
+    p.add_argument('--cuda', type=bool, default=True)
+    p.add_argument('--mode', type=str, default='train_test')
 
     return p

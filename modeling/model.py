@@ -47,21 +47,21 @@ class PrototypicalLoss(nn.Module):
         return prototypical_loss(input, target, self.n_support)
 
 
-def euclidean_dist(x, y):
+def euclidean_dist(x: Tensor, y: Tensor) -> Tensor:
     '''
     Compute euclidean distance between two tensors
+
+    Params:
+    - x: Tensor of shape (n, d), n is the number of samples, d is the feature.
+    - y: Tensor of shape (c, d), representation vectors of prototypes.
     '''
-    # x: N x D（300个query×每个样本的presentation的维数）
-    # y: M x D（60个class×每个分类的presentation的维数）
     n = x.size(0)  # 300
-    m = y.size(0)  # 60
+    c = y.size(0)  # 60
     d = x.size(1)  # 576
-    if d != y.size(1):
-        raise Exception
+    assert d == y.size(1)
 
-    x = x.unsqueeze(1).expand(n, m, d)
-    y = y.unsqueeze(0).expand(n, m, d)
-
+    x = x.unsqueeze(1).expand(n, c, d)
+    y = y.unsqueeze(0).expand(n, c, d)
     return torch.pow(x - y, 2).sum(2)
 
 

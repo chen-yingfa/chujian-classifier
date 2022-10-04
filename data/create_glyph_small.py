@@ -13,7 +13,5 @@ dst_dir = Path('./chujian/glyphs_small')
 images = random.sample(all_images, 1000)
 for image in images:
     dst_file = dst_dir / image.parent.name / image.name
-    print(dst_file)
-    exit()
     dst_file.parent.mkdir(exist_ok=True, parents=True)
     copyfile(image, dst_file)

@@ -9,11 +9,12 @@ class PrototypicalBatchSampler(object):
     'num_samples', in fact at every iteration the batch indexes will refer to
     'num_support' + 'num_query' samples for 'classes_per_it' random classes.
     '''
+
     def __init__(
         self,
         labels: list,
         classes_per_it: int,
-        num_samples: int,
+        samples_per_class: int,
         num_iters: int,
     ):
         '''
@@ -30,7 +31,7 @@ class PrototypicalBatchSampler(object):
         super(PrototypicalBatchSampler, self).__init__()
         self.labels = labels
         self.classes_per_it = classes_per_it
-        self.sample_per_class = num_samples
+        self.sample_per_class = samples_per_class
         self.num_iters = num_iters
 
         # 类，与类的数量
@@ -74,9 +75,8 @@ class PrototypicalBatchSampler(object):
 
         for it in range(self.num_iters):
             batch_size = samples_per_class * num_classes
-            # print('batch size:', batch_size)
-
             batch = torch.LongTensor(batch_size)
+
             # Random sample `num_classes` class indices.
             class_idxs = torch.randperm(len(self.classes))[:num_classes]
 
@@ -104,12 +104,20 @@ class PrototypicalBatchSampler(object):
                 class_num_examples = self.class_to_numels[class_idx]
 
                 # Sample `samples_per_class` examples for this class.
-                col_idxs = torch.randperm(
-                    class_num_examples)[:samples_per_class]
-                # print('example_idxs', example_idxs)
-                # print(self.labels[example_idxs])
+                if class_num_examples > samples_per_class:
+                    col_idxs = torch.randperm(
+                        class_num_examples)[:samples_per_class]
+                else:
+                    # If there are not enough examples for this class,
+                    # repeatedly sample with replacement.
+                    col_idxs = torch.randint(
+                        0, class_num_examples.item(),
+                        size=(samples_per_class,),
+                    )
+                # print('-------')
+                # print('class_num_examples', class_num_examples)
+                # print('col_idxs', col_idxs)
                 # print('batch.shape', batch.shape)
-                # print('num_examples', num_examples)
 
                 # Insert into batch
                 slice_size = col_idxs.shape[0]
