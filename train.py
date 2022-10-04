@@ -198,26 +198,22 @@ def get_representation(
     Get the prototype representation of the dataset. This will feed all
     examples in the dataset to the model, then average the output.
 
+    Return:
+        Tensor: shape (num_features)
     Args:
     '''
-    print(f'Getting representation for {len(dataset)} images')
     data_loader = DataLoader(dataset, batch_size=50)
     model.eval()
     all_outputs = None
-    for i, batch_c in enumerate(data_loader):
-        inputs = batch_c
-        print('inputs.size', inputs.size())
-        inputs = inputs.to(device)
+    for i, batch in enumerate(data_loader):
+        inputs = batch.to(device)
+        # print('inputs.size', inputs.size())
         outputs = model(inputs).detach().cpu()
-        print('outputs.size', outputs.size())
         if i == 0:
             all_outputs = outputs
         else:
             all_outputs = torch.cat((all_outputs, outputs), dim=0)
     prototypes = all_outputs.to('cpu').mean(0)
-
-    print("all_outputs.size", all_outputs.size())
-    print("prototypes.size", prototypes.size())
     return prototypes
 
 
@@ -236,13 +232,8 @@ def get_all_prototypes(
     Returns:
         Tensor of shape (num_classes, hidden_dim)
     '''
-
     model.eval()
-    # dataset = datasets.ImageFolder(args.test_dir, transform=transforms)
     prototypes = torch.empty(num_classes, hidden_dim)
-    print(f'Prototypes size: {prototypes.size()}')
-
-    # Get representation of prototypes
     lo = 0
     for class_idx in range(num_classes):
         # Get a dataset of all examples belonging to this class
@@ -251,11 +242,13 @@ def get_all_prototypes(
             hi += 1
         class_size = hi - lo
         if class_size == 0:
-            raise NotImplementedError
+            # This class has no examples in training data
+            prototypes[class_idx] = torch.zeros(hidden_dim)
+            # raise ValueError(f'Class {class_idx} has no examples')
+            continue
         class_dataset = torch.empty(class_size, 3, *img_size)
         for i in range(lo, hi):
             class_dataset[i - lo] = dataset[i][0].unsqueeze(0)
-
         lo = hi
         # Get the protoype of this class
         prototypes[class_idx] = get_representation(
@@ -283,6 +276,7 @@ def test(
     # TODO: This needs to take into account for classes that are not in the
     # training set.
     train_dataset = ChujianDataset(args.train_dir, transform=transform)
+    print('Getting prototypes from training data')
     prototypes = get_all_prototypes(
         model,
         dataset=train_dataset,
@@ -291,18 +285,20 @@ def test(
         img_size=img_size,
         hidden_dim=hidden_dim,
     )
-    print("prototypes", prototypes.size())
+    print("prototypes", prototypes.size())  # (p, d)
 
     batch_size = 50
-    print('------ Testing ------')
-    print(f'Batch size: {batch_size}')
-    num_correct_1 = 0
-    num_correct_3 = 0
-    num_correct_5 = 0
-    num_correct_10 = 0
     dataset = ChujianDataset(args.test_dir, transform=transform)
     num_examples = len(dataset)
     loader = DataLoader(dataset, batch_size=batch_size)
+
+    print('------ Testing ------')
+    print(f'Batch size: {batch_size}')
+    print(f'Number of classes: {num_classes}')
+    print(f'# examples {len(dataset)}')
+
+    topks = [1, 3, 5, 10]
+    num_corrects = {k: 0 for k in topks}
 
     def get_num_correct(
         labels: Tensor,
@@ -312,48 +308,31 @@ def test(
         '''
         Return the number of correct predictions
         '''
-        _, log_p_y_k = torch.topk(F.log_softmax(-dists, dim=1), k=k, dim=1)
+        log_p_y = F.log_softmax(-dists, dim=1)
+        _, indices = torch.topk(log_p_y, k=k, dim=1)
         # Change (B) -> (B, 1), for comparison with log_p_y_k (B, k)
         labels = labels.view(-1, 1)
-        return (labels == log_p_y_k).sum().item()
+        return (labels == indices).sum().item()
 
     for batch in loader:
-        inputs, labels = batch  # x:数据，y:label
-        inputs = inputs.to(device)
-        print("inputs", inputs.size())
-
-        outputs = model(inputs).detach().to('cpu')
-        dists = euclidean_dist(outputs, prototypes)
-
-        print('model_output shape:', outputs.shape)
-        print('prototypes shape:', prototypes.shape)
-        print("dists:", dists.size())  # dists torch.Size([600, 361])
-
-        # top-1 accuracy
-        log_p_y = F.log_softmax(-dists, dim=1).max(1)
-        # print(answer_cpu.size(),log_p_y[1].size())
-        # [1]表示取得是index，因为第0维是value
-        num_correct_1 += labels.eq(log_p_y[1]).sum().item()
-
-        if True:
-            num_correct_1_0 = get_num_correct(labels, dists, 1)
-            assert num_correct_1_0 == num_correct_1
+        inputs, labels = batch
+        inputs = inputs.to(device)                      # (b, 3, h, w)
+        outputs = model(inputs).detach().cpu()          # (b, d)
+        dists = euclidean_dist(outputs, prototypes)     # (b, p)
 
         # top-k accuracy
-        num_correct_3 += get_num_correct(labels, dists, 3)
-        num_correct_5 += get_num_correct(labels, dists, 5)
-        num_correct_10 += get_num_correct(labels, dists, 10)
+        for k in topks:
+            num_corrects[k] += get_num_correct(labels, dists, k)
 
-    def get_result(topk: int, num_correct: int) -> dict:
-        return {
-            'topk': topk,
-            'accuracy': round(100 * num_correct / num_examples, 2),
+    result = {
+        'acc': {
+            f'top-{k}': round(
+                100 * num_corrects[k] / num_examples,
+                2,
+            ) for k in topks
         }
-
-    print(get_result(1, num_correct_1))
-    print(get_result(3, num_correct_3))
-    print(get_result(5, num_correct_5))
-    print(get_result(10, num_correct_10))
+    }
+    return result
 
 
 def load_model(ckpt_file: Path) -> ProtoNet:
@@ -392,8 +371,13 @@ def main() -> None:
             model = load_model(ckpt_file)
             model.to(device)
             print(f"------ testing {ckpt_file} ------")
-            test(args, model, num_classes=NUM_CLASSES, img_size=IMG_SIZE)
-            raise NotImplementedError
+            result = test(
+                args,
+                model,
+                num_classes=NUM_CLASSES,
+                img_size=IMG_SIZE,
+            )
+            print(result)
 
 
 if __name__ == '__main__':
