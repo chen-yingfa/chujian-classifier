@@ -1,6 +1,7 @@
 from torchvision import transforms as T
 import numpy as np
 import torch
+import json
 
 
 def mean(arrs):
@@ -25,3 +26,7 @@ def dump_list(path, lst):
     with open(path, 'w') as f:
         for x in lst:
             f.write(f"{x}\n")
+
+
+def dump_json(data, file: str):
+    json.dump(data, open(file, 'w'), indent=4)

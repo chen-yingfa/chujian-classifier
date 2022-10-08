@@ -3,15 +3,11 @@ import argparse
 
 def get_parser():
     p = argparse.ArgumentParser()
-    p.add_argument('--train_dir', default='./data/chujian/glyphs_small_train')
-    p.add_argument('--test_dir', default='./data/chujian/glyphs_small_test')
-    p.add_argument(
-        '-exp', '--ckpt_dir',
-        help='root where to store models, losses and accuracies',
-        default='./ckpts')
+    p.add_argument('--train_dir', default='./data/chujian/glyphs_train')
+    p.add_argument('--test_dir', default='./data/chujian/glyphs_test')
     # 改了，原100
     p.add_argument(
-        '--epochs', type=int, default=2,
+        '--epochs', type=int, default=10,
         help='number of epochs to train for')
     p.add_argument(
         '--lr', type=float, default=0.001,
@@ -74,6 +70,7 @@ def get_parser():
     )
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--cuda', type=bool, default=True)
-    p.add_argument('--mode', type=str, default='train_test')
+    p.add_argument('--mode', default='train_test')
+    p.add_argument('--output_dir', default='./result/glyphs_8349')
 
     return p

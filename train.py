@@ -1,7 +1,6 @@
-import os
 from pathlib import Path
 from argparse import Namespace
-from typing import Tuple
+from typing import Tuple, List
 
 import torch
 from torch import nn, Tensor
@@ -12,7 +11,7 @@ from torchvision import transforms
 from modeling.model import ProtoNet, prototypical_loss, euclidean_dist
 from arguments import get_parser
 from sampler import PrototypicalBatchSampler
-from utils import set_seed, mean
+from utils import set_seed, mean, dump_json
 from dataset import ChujianDataset
 
 
@@ -40,7 +39,7 @@ def get_dataloader(
     num_classes = len(dataset.classes)
     num_examples = len(dataset)
     print(f'# examples: {num_examples}')
-    print(f"# classes: {mode} {num_classes}")
+    print(f"# classes: {num_classes}")
     if (num_classes < args.classes_per_it_tr or
             num_classes < args.classes_per_it_val):
         raise Exception(
@@ -57,7 +56,7 @@ def get_dataloader(
     else:  # validation 和 test 用同一组..？
         classes_per_it = args.classes_per_it_val
         num_samples = args.num_support_val + args.num_query_val
-    labels = [dataset[i][1] for i in range(len(dataset))]
+    labels = [x[1] for x in dataset.imgs]
     # print(classes_per_it, num_samples)  # 60 10
     # classes_per_it_tr: number of random classes per episode for training
     # default=60
@@ -92,7 +91,7 @@ def train(
     model: nn.Module,
     optim: torch.optim.Adam,
     scheduler: torch.optim.lr_scheduler.StepLR,
-    val_loader=None,
+    val_loader: DataLoader = None,
 ) -> None:
     '''
     Train the model with the prototypical learning algorithm
@@ -149,9 +148,13 @@ def train(
               .format(mean(loss_statistic), mean(acc_statistic)),
               end='\n\n')
 
-        ckpt_file = Path(args.ckpt_dir, f'ckpt_{ep}.pt')
+        ckpt_dir = Path(args.output_dir, 'ckpts')
+        ckpt_dir.mkdir(exist_ok=True, parents=True)
+        ckpt_file = ckpt_dir / f'ckpt_{ep}.pt'
+        print(f'Saving checkpoint to {ckpt_file}')
         torch.save(model.state_dict(), ckpt_file)
         scheduler.step()
+    print('------ Done Training ------')
     return
 
 
@@ -165,9 +168,6 @@ def initialize(
     '''
     初始化训练所需的模型及数据集
     '''
-    print('Initializing')
-    if not os.path.exists(args.ckpt_dir):
-        os.makedirs(args.ckpt_dir)
     print(f'Setting seed: {args.seed}', flush=True)
     set_seed(args.seed)
 
@@ -262,7 +262,7 @@ def test(
     num_classes: int,
     img_size: tuple = (50, 50),
     hidden_dim: int = 576,
-) -> None:
+) -> dict:
     '''
     Perform test on model
     '''
@@ -297,40 +297,43 @@ def test(
     print(f'Number of classes: {num_classes}')
     print(f'# examples {len(dataset)}')
 
-    topks = [1, 3, 5, 10]
-    num_corrects = {k: 0 for k in topks}
+    TOP_KS = [1, 3, 5, 10]
+    num_corrects = {k: 0 for k in TOP_KS}
+    all_preds = []
 
     def get_num_correct(
-        labels: Tensor,
-        dists: Tensor,
-        k: int,
-    ) -> int:
+        labels: Tensor,     # (b)
+        dists: Tensor,      # (b, p)
+        all_preds: List[List[int]]
+    ) -> None:
         '''
-        Return the number of correct predictions
+        This will append the top-10 preds to `all_preds`.
         '''
         log_p_y = F.log_softmax(-dists, dim=1)
-        _, indices = torch.topk(log_p_y, k=k, dim=1)
+        _, top_preds = torch.topk(log_p_y, k=max(TOP_KS), dim=1)  # (B, 10)
+        all_preds += top_preds.detach().cpu().tolist()
         # Change (B) -> (B, 1), for comparison with log_p_y_k (B, k)
         labels = labels.view(-1, 1)
-        return (labels == indices).sum().item()
+        for k in TOP_KS:
+            preds = top_preds[:, :k]  # (B, k)]
+            num_correct = (labels == preds).sum().item()
+            num_corrects[k] += num_correct
 
     for batch in loader:
         inputs, labels = batch
         inputs = inputs.to(device)                      # (b, 3, h, w)
         outputs = model(inputs).detach().cpu()          # (b, d)
         dists = euclidean_dist(outputs, prototypes)     # (b, p)
-
-        # top-k accuracy
-        for k in topks:
-            num_corrects[k] += get_num_correct(labels, dists, k)
-
+        get_num_correct(labels, dists, all_preds)
+    print('------ Done testing ------')
     result = {
         'acc': {
             f'top-{k}': round(
                 100 * num_corrects[k] / num_examples,
                 2,
-            ) for k in topks
-        }
+            ) for k in num_corrects
+        },
+        'preds': all_preds,
     }
     return result
 
@@ -363,11 +366,11 @@ def main() -> None:
         )
 
     if 'test' in args.mode:
-        NUM_CLASSES = 525
+        NUM_CLASSES = 8349
         device = get_device(args.cuda)
         # Test on all epochs
         for ep in range(args.epochs):
-            ckpt_file = Path(args.ckpt_dir, f'ckpt_{ep}.pt')
+            ckpt_file = Path(args.output_dir, 'ckpts', f'ckpt_{ep}.pt')
             model = load_model(ckpt_file)
             model.to(device)
             print(f"------ testing {ckpt_file} ------")
@@ -377,7 +380,13 @@ def main() -> None:
                 num_classes=NUM_CLASSES,
                 img_size=IMG_SIZE,
             )
-            print(result)
+            output_dir = Path(args.output_dir, f'test_{ep}')
+            output_dir.mkdir(exist_ok=True, parents=True)
+            result_file = output_dir / 'result.json'
+            print(result['acc'])
+            dump_json(result['acc'], result_file)
+            preds_file = output_dir / 'preds.json'
+            dump_json(result['preds'], preds_file)
 
 
 if __name__ == '__main__':

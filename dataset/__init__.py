@@ -1,6 +1,7 @@
 from pathlib import Path
 from torch.utils.data import Dataset
 from PIL import Image
+import random
 
 
 class ChujianDataset(Dataset):
@@ -32,6 +33,7 @@ class ChujianDataset(Dataset):
             cls_idx = len(self.classes) - 1
             for image_path in glyph_dir.iterdir():
                 self.imgs.append((image_path, cls_idx))
+        random.shuffle(self.imgs)
 
     def __getitem__(self, idx: int) -> tuple:
         '''
