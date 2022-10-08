@@ -7,10 +7,10 @@ def get_parser():
     p.add_argument('--test_dir', default='./data/chujian/glyphs_test')
     # 改了，原100
     p.add_argument(
-        '--epochs', type=int, default=10,
+        '--epochs', type=int, default=40,
         help='number of epochs to train for')
     p.add_argument(
-        '--lr', type=float, default=0.001,
+        '--lr', type=float, default=0.0001,
         help='learning rate for the model, default=0.001')
     # 学习率衰减用的
     p.add_argument(
@@ -23,14 +23,14 @@ def get_parser():
     # 改了，原100
     p.add_argument(
         '-its', '--iterations',
-        type=int, default=100,
+        type=int, default=200,
         help='number of episodes per epoch, default=100',
     )
 
     p.add_argument(
         '-cTr', '--classes_per_it_tr',
         type=int,
-        default=20,
+        default=100,
         help='number of random classes per episode for training, default=60',
     )
 
@@ -40,7 +40,6 @@ def get_parser():
         default=5,
         help='number of samples per class to use as support for training',
     )
-
     p.add_argument(
         '-nqTr', '--num_query_tr',
         type=int,
@@ -48,26 +47,28 @@ def get_parser():
         help='number of samples per class to use as query for training',
     )
 
-    p.add_argument(
-        '-cVa', '--classes_per_it_val',
-        type=int,
-        help='number of random classes per episode for validation, default=5',
-        default=5,
-    )
-    # 改了，原5
-    p.add_argument(
-        '-nsVa', '--num_support_val',
-        type=int,
-        help='number of samples per class to use as support for validation',
-        default=4,
-    )
-    # 改了，原15
-    p.add_argument(
-        '-nqVa', '--num_query_val',
-        type=int,
-        help='number of samples per class to use as query for validation',
-        default=4,
-    )
+    # No validation now...
+
+    # p.add_argument(
+    #     '-cVa', '--classes_per_it_val',
+    #     type=int,
+    #     help='number of classes per episode for validation, default=5',
+    #     default=5,
+    # )
+    # # 改了，原5
+    # p.add_argument(
+    #     '-nsVa', '--num_support_val',
+    #     type=int,
+    #     help='number of samples per class to use as support for validation',
+    #     default=4,
+    # )
+    # # 改了，原15
+    # p.add_argument(
+    #     '-nqVa', '--num_query_val',
+    #     type=int,
+    #     help='number of samples per class to use as query for validation',
+    #     default=4,
+    # )
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--cuda', type=bool, default=True)
     p.add_argument('--mode', default='train_test')

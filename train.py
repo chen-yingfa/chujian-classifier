@@ -28,6 +28,9 @@ def get_dataloader(
         transforms.ToTensor(),
         # TODO: Add more transformations: data augmentation, normalize etc.
         transforms.GaussianBlur(kernel_size=3),
+        transforms.RandomResizedCrop(img_size),
+        transforms.RandomPosterize(bits=2),
+        transforms.RandomAdjustSharpness(sharpness_factor=4),
         transforms.RandomInvert(),
         transforms.RandomAutocontrast(),
         transforms.RandomGrayscale(),
@@ -40,8 +43,10 @@ def get_dataloader(
     num_examples = len(dataset)
     print(f'# examples: {num_examples}')
     print(f"# classes: {num_classes}")
-    if (num_classes < args.classes_per_it_tr or
-            num_classes < args.classes_per_it_val):
+    if any([
+        num_classes < args.classes_per_it_tr,
+        # num_classes < args.classes_per_it_val,
+    ]):
         raise Exception(
             'There are not enough classes in the dataset in order '
             'to satisfy the chosen classes_per_it. Decrease the '

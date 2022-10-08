@@ -10,11 +10,20 @@ A small part (1,000 examples) of the entire Chujian dataset is extracted for con
 
 ### Training
 
-Execute: `python3 train.py`
+Set the data path with `--train_dir` and `--test_dir`.
+Set the output path with `--output_dir`.
+
+Execute
+
+```bash
+python3 train.py
+```
 
 ### Testing
 
-Upcoming
+```bash
+python3 train.py --mode test
+```
 
 ## Acknowledgements 
 
