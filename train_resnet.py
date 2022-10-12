@@ -1,12 +1,14 @@
 from pathlib import Path
+from argparse import ArgumentParser, Namespace
 
 import torch
-from torch import nn, Tensor
+from torch import nn
 from torchvision import transforms
 
 from dataset import ChujianDataset
 from trainer import Trainer
 from modeling.resnet import ResNet
+from utils import get_param_cnt
 
 
 def load_model(img_size, num_classes) -> nn.Module:
@@ -14,12 +16,28 @@ def load_model(img_size, num_classes) -> nn.Module:
     return model
 
 
+def parse_args() -> Namespace:
+    p = ArgumentParser()
+    p.add_argument('--lr', type=float, default=0.0001)
+    p.add_argument('--batch_size', type=int, default=256)
+    p.add_argument('--num_epochs', type=int, default=10)
+    p.add_argument('--mode', default='train_test')
+    p.add_argument('--output_dir', default='result/temp')
+    return p.parse_args()
+
+
 def main():
-    output_dir = Path('result/chujian_955')
-    train_dir = Path('data/chujian/glyphs_955_train')
-    test_dir = Path('data/chujian/glyphs_955_test')
+    assert torch.cuda.is_available(), 'CUDA is not available'
+    
+    args = parse_args()
+    
+    train_dir = Path('/data/private/chenyingfa/chujian/glyphs_955_train')
+    test_dir = Path('/data/private/chenyingfa/chujian/glyphs_955_test')
     img_size = (50, 50)
     num_classes = 955
+    
+    lr = args.lr
+    output_dir = Path(args.output_dir)
     
     train_transform = transforms.Compose([
         transforms.Resize(img_size),
@@ -43,12 +61,26 @@ def main():
     train_data = ChujianDataset(train_dir, train_transform, True)
     test_data = ChujianDataset(test_dir, test_transform, False)
 
-    print('Loading model...')
+    print('Loading model...', flush=True)
     model = load_model(img_size, num_classes)
-    print('Instantiating trainer...')
-    trainer = Trainer(model, output_dir, 2, 4, 0.001)
-    trainer.train(train_data, test_data)
-
+    print(f'Params: {get_param_cnt(model)}')
+    print('Instantiating trainer...', flush=True)
+    trainer = Trainer(
+        model, 
+        output_dir,
+        batch_size=args.batch_size,
+        log_interval=50,
+        lr=args.lr,
+    )
+    
+    if 'train' in args.mode:
+        trainer.train(train_data, test_data)
+    if 'test' in args.mode:
+        test_output_dir = output_dir / 'test'
+        result = trainer.evaluate(
+            test_data, test_output_dir)
+        del result['preds']
+        print(result)
 
 if __name__ == '__main__':
     main()

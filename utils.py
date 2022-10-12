@@ -30,3 +30,7 @@ def dump_list(path, lst):
 
 def dump_json(data, file: str):
     json.dump(data, open(file, 'w'), indent=4)
+
+
+def get_param_cnt(model):
+    return sum([p.numel() for p in model.parameters()])
