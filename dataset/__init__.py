@@ -7,20 +7,29 @@ import random
 class ChujianDataset(Dataset):
     '''
     Replacement for ImageFolder that supports empty subdirs.
-    
+
+    Args:
+        root (string): Root directory path.
+        transform (callable, optional): 
+            A function/transform that takes in an PIL image.
+        shuffle (bool, optional): Whether to shuffle the dataset.
+
     Attributes:
         classes (list): List of the class names sorted alphabetically.
         class_to_idx (dict): Dict with items (class_name, class_index).
         imgs (list): List of (image path, class_index) tuples
     '''
+
     def __init__(
         self,
         root: str,
         transform=None,
+        shuffle: bool = False,
     ):
         super().__init__()
         self.root = Path(root)
         self.transform = transform
+        self.shuffle = shuffle
 
         # Loop through root directory and get all classes and image paths.
         self.imgs = []
@@ -33,7 +42,8 @@ class ChujianDataset(Dataset):
             cls_idx = len(self.classes) - 1
             for image_path in glyph_dir.iterdir():
                 self.imgs.append((image_path, cls_idx))
-        random.shuffle(self.imgs)
+        if shuffle:
+            random.shuffle(self.imgs)
 
     def __getitem__(self, idx: int) -> tuple:
         '''

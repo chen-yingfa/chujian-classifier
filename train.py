@@ -29,7 +29,7 @@ def get_dataloader(
         # TODO: Add more transformations: data augmentation, normalize etc.
         transforms.GaussianBlur(kernel_size=3),
         transforms.RandomResizedCrop(img_size),
-        transforms.RandomPosterize(bits=2),
+        # transforms.RandomPosterize(bits=2),
         transforms.RandomAdjustSharpness(sharpness_factor=4),
         transforms.RandomInvert(),
         transforms.RandomAutocontrast(),
@@ -38,7 +38,11 @@ def get_dataloader(
     ])
 
     # dataset = datasets.ImageFolder(args.train_dir, transform=transform)
-    dataset = ChujianDataset(args.train_dir, transform=transform)
+    dataset = ChujianDataset(
+        args.train_dir,
+        transform=transform,
+        shuffle=True,
+    )
     num_classes = len(dataset.classes)
     num_examples = len(dataset)
     print(f'# examples: {num_examples}')
@@ -240,6 +244,7 @@ def get_all_prototypes(
     model.eval()
     prototypes = torch.empty(num_classes, hidden_dim)
     lo = 0
+    print(f'Looping {num_classes} classes...')
     for class_idx in range(num_classes):
         # Get a dataset of all examples belonging to this class
         hi = lo
@@ -270,6 +275,12 @@ def test(
 ) -> dict:
     '''
     Perform test on model
+    
+    This will first generate prototypes (representative vectors) for each 
+    class using the training data, then feed the test data to the model and 
+    predict the class based on the prototypes.
+    
+    returns: a dict containing the accuracy and predictions.
     '''
     transform = transforms.Compose([
         transforms.Resize(img_size),
@@ -280,16 +291,25 @@ def test(
     # Use training data to get prototypes for each class.
     # TODO: This needs to take into account for classes that are not in the
     # training set.
-    train_dataset = ChujianDataset(args.train_dir, transform=transform)
-    print('Getting prototypes from training data')
-    prototypes = get_all_prototypes(
-        model,
-        dataset=train_dataset,
-        num_classes=num_classes,
-        device=device,
-        img_size=img_size,
-        hidden_dim=hidden_dim,
-    )
+    prototypes_cache = Path(args.output_dir, 'prototypes.pt')
+    if prototypes_cache.exists():
+        prototypes = torch.load(prototypes_cache)
+    else:
+        train_dataset = ChujianDataset(
+            args.train_dir,
+            transform=transform,
+        )
+        print('Getting prototypes from training data')
+        prototypes = get_all_prototypes(
+            model,
+            dataset=train_dataset,
+            num_classes=num_classes,
+            device=device,
+            img_size=img_size,
+            hidden_dim=hidden_dim,
+        )
+        print(f'Saving prototypes to {prototypes_cache}')
+        torch.save(prototypes, prototypes_cache)
     print("prototypes", prototypes.size())  # (p, d)
 
     batch_size = 50
@@ -374,7 +394,8 @@ def main() -> None:
         NUM_CLASSES = 8349
         device = get_device(args.cuda)
         # Test on all epochs
-        for ep in range(args.epochs):
+        # for ep in range(args.epochs):
+        for ep in range(2):
             ckpt_file = Path(args.output_dir, 'ckpts', f'ckpt_{ep}.pt')
             model = load_model(ckpt_file)
             model.to(device)

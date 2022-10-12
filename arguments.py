@@ -6,11 +6,9 @@ def get_parser():
     p.add_argument('--train_dir', default='./data/chujian/glyphs_train')
     p.add_argument('--test_dir', default='./data/chujian/glyphs_test')
     # 改了，原100
+    p.add_argument('--epochs', type=int, default=6)
     p.add_argument(
-        '--epochs', type=int, default=40,
-        help='number of epochs to train for')
-    p.add_argument(
-        '--lr', type=float, default=0.0001,
+        '--lr', type=float, default=0.00005,
         help='learning rate for the model, default=0.001')
     # 学习率衰减用的
     p.add_argument(
