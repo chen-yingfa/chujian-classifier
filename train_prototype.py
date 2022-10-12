@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from modeling.model import ProtoNet, prototypical_loss, euclidean_dist
+from modeling.protonet import ProtoNet, prototypical_loss, euclidean_dist
 from arguments import get_parser
 from sampler import PrototypicalBatchSampler
 from utils import set_seed, mean, dump_json

@@ -32,6 +32,7 @@ for glyph_dir in data_dir.iterdir():
 
 # Split into train and test set
 # For each class, split by 4:1 ratio.
+print('Splitting...')
 train_images = {}
 test_images = {}
 for glyph, image_files in images.items():

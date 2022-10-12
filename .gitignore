@@ -7,4 +7,6 @@ __pycache__
 .vscode
 data/chujian/glyphs
 data/chujian
+data/*.png
+ckpts/*pt
 result

@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 from collections import defaultdict
+from shutil import copyfile
 
 
 def dump_json(data, file):
@@ -13,10 +14,11 @@ def dump_json(data, file):
 
 
 glyph_count_file = Path('glyph_count.json')
+DATA_DIR = Path('chujian/glyphs')
+
 if not glyph_count_file.exists():
-    data_dir = Path('chujian/glyphs')
     glyph_cnt = {}
-    for glyph_dir in sorted(data_dir.iterdir()):
+    for glyph_dir in sorted(DATA_DIR.iterdir()):
         glyph_cnt[glyph_dir.name] = len(
             [image for image in glyph_dir.iterdir()])
     dump_json(glyph_cnt, 'glyph_count.json')
@@ -25,24 +27,28 @@ else:
 
 
 merged = defaultdict(int)
+# Map new glyph name to old glyph name
+new_to_old_name = defaultdict(list)
 for glyph, cnt in glyph_cnt.items():
+    orig = glyph
     # Discard all glyphs containing these chars.
-    skip_chars = [
+    DISCARD_CHARS = [
         '?'
         '□', '■',
         '○', '●',
         '△', '▲',
         '☆', '★',
         '◇', '◆',
+        '□'
     ]
-    if any(c in glyph for c in skip_chars):
+    if any(c in glyph for c in DISCARD_CHARS):
         continue
 
     # Normalize the glyph label
-    rm_chars = [
+    RM_STRS = [
         '=', 'None'
     ]
-    for c in rm_chars:
+    for c in RM_STRS:
         glyph = glyph.replace(c, '')
 
     # Replace brackets
@@ -60,26 +66,43 @@ for glyph, cnt in glyph_cnt.items():
                 # "（*）"
                 if i == 0:
                     glyph = glyph[1:-1]
-                # "a（*）"
-                if i == 1:
-                    glyph = glyph[0]
-                # "*}（*）"
-                elif glyph[i-1] == '}':
-                    glyph = glyph[i+1:-1]
+                else:
+                    # "*}（*）"
+                    if glyph[i-1] == '}':
+                        glyph = glyph[i+1:-1]
+                    # "A（*）" -> "A"
+                    else:
+                        glyph = glyph[0]
                 break
     # "A→B"
     if '→' in glyph:
         glyph = glyph.split('→')[1]
+    if glyph == '𬨭':
+        glyph = '將'
+    if glyph == '𫵖':
+        glyph = '尸示'
 
     merged[glyph] += cnt
-
+    new_to_old_name[glyph].append(orig)
 
 # Remove the glyphs with less than 10 samples
 merged = {k: v for k, v in merged.items() if v >= 10}
 merged_sorted = sorted(merged.items(), key=lambda x: x[1], reverse=True)
 merged = {k: v for k, v in merged_sorted}
-dump_json(merged_sorted, 'merged_glyph_count_sorted.json')
-
 dump_json(merged, 'merged_glyph_count.json')
+new_to_old_name = {k: v for k, v in new_to_old_name.items() if k in merged}
 
 print(f'Found {len(merged)} glyphs')
+
+# Copy glyphs over
+DST_DIR = Path('chujian/glyphs_merged')
+for i, (new_name, old_names) in enumerate(new_to_old_name.items()):
+    print(f'{i} Copying {old_names} to {new_name}')
+    # Create the new dir
+    dst_glyph_dir = DST_DIR / new_name
+    dst_glyph_dir.mkdir(exist_ok=True, parents=True)
+    for old_name in old_names:
+        src_dir = DATA_DIR / old_name
+        for src_file in src_dir.iterdir():
+            dst_file = dst_glyph_dir / src_file.name
+            copyfile(src_file, dst_file)

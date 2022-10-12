@@ -2,7 +2,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 # data_dir = Path('./chujian/glyphs_small_train')
-data_dir = Path('./chujian/glyphs_test')
+data_dir = Path('./chujian/glyphs_955_train')
 glyph_cnts = {}
 for glyph_dir in data_dir.iterdir():
     glyph_cnts[glyph_dir.name] = len(list(glyph_dir.iterdir()))
@@ -21,6 +21,10 @@ for i in [2, 5, 10]:
 print('------ Top 10 classes:')
 for i in range(10):
     print(cnts[i][0], cnts[i][1])
+print('------')
+print('------ Bottom 10 classes:')
+for i in range(1, 11):
+    print(cnts[-i][0], cnts[-i][1])
 print('------')
 
 
