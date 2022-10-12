@@ -6,19 +6,12 @@ from torchvision import transforms
 
 from dataset import ChujianDataset
 from trainer import Trainer
+from modeling.resnet import ResNet
 
 
-def load_model() -> nn.Module:
-    model = torch.hub.load(
-        'pytorch/vision:v0.10.0', 'resnet18', pretrained=True)
+def load_model(img_size, num_classes) -> nn.Module:
+    model = ResNet(img_size, num_classes)
     return model
-
-
-def train(
-    model,
-    train_data: ChujianDataset,
-):
-    pass
 
 
 def main():
@@ -26,6 +19,8 @@ def main():
     train_dir = Path('data/chujian/glyphs_955_train')
     test_dir = Path('data/chujian/glyphs_955_test')
     img_size = (50, 50)
+    num_classes = 955
+    
     train_transform = transforms.Compose([
         transforms.Resize(img_size),
         transforms.ToTensor(),
@@ -48,7 +43,9 @@ def main():
     train_data = ChujianDataset(train_dir, train_transform, True)
     test_data = ChujianDataset(test_dir, test_transform, False)
 
-    model = load_model()
+    print('Loading model...')
+    model = load_model(img_size, num_classes)
+    print('Instantiating trainer...')
     trainer = Trainer(model, output_dir, 2, 4, 0.001)
     trainer.train(train_data, test_data)
 
