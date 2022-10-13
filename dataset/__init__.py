@@ -40,10 +40,20 @@ class ChujianDataset(Dataset):
                 continue
             self.classes.append(glyph_dir.name)
             cls_idx = len(self.classes) - 1
-            for image_path in glyph_dir.iterdir():
+
+            image_paths = sorted(glyph_dir.iterdir())
+            
+            # Always pick 1000 images from 
+            class_size = max(100, len(image_paths))
+            image_paths = random.choices(image_paths, k=class_size)
+            for image_path in image_paths:
                 self.imgs.append((image_path, cls_idx))
         if shuffle:
             random.shuffle(self.imgs)
+        
+        # Duplicate all images to make the dataset balanced.
+        for idx in range(len(self.imgs)):
+            self.imgs.append(self.imgs[idx])
 
     def __getitem__(self, idx: int) -> tuple:
         '''

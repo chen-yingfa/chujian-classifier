@@ -62,6 +62,21 @@ def main():
 
     train_data = ChujianDataset(train_dir, train_transform, True)
     test_data = ChujianDataset(test_dir, test_transform, False)
+    # print(train_data.classes)
+    # for idx in [
+    #     83,
+    #     56,
+    #     190,
+    #     603,
+    #     67,
+    #     81,
+    #     475,
+    #     452,
+    #     95,
+    #     152
+    # ]:
+    #     print(train_data.classes[idx])
+    # exit()
 
     print('Loading model...', flush=True)
     model = load_model(
