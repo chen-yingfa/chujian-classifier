@@ -64,7 +64,7 @@ class Trainer:
             self.train_step(batch)
         self.log(f'Epoch done')
 
-    def train_step(self, batch):
+    def train_step(self, batch: tuple):
         inputs, labels = batch
         inputs = inputs.to(self.device)
         labels = labels.to(self.device)
@@ -118,36 +118,41 @@ class Trainer:
 
     def validate(self, dev_data: Dataset):
         dev_dir = self.output_dir / f'ckpt_{self.cur_ep}'
+        dev_dir.mkdir(exist_ok=True, parents=True)
         result = self.evaluate(dev_data, dev_dir)
         del result['preds']
         result_file = dev_dir / 'result.json'
         json.dump(result, open(result_file, 'w'), indent=4)
+        self.save_ckpt(dev_dir / 'ckpt.pt')
+        
+    def save_ckpt(self, ckpt_file: Path):
+        print(f'Saving checkpoint to {ckpt_file}')
+        ckpt_file.parent.mkdir(exist_ok=True, parents=True)
+        torch.save(self.model.state_dict(), ckpt_file)
 
-    def save_ckpt(self, filename: str):
-        ckpt_dir = self.output_dir / 'ckpts'
-        ckpt_dir.mkdir(exist_ok=True, parents=True)
-        torch.save(self.model.state_dict(), ckpt_dir / filename)
-
-    def load_ckpt(self, filename: str) -> nn.Module:
-        sd = torch.load(self.output_dir / filename)
+    def load_ckpt(self, path: str) -> nn.Module:
+        print(f'Loading checkpoint from {path}')
+        sd = torch.load(self.output_dir / path)
         self.model.load_state_dict(sd)
 
     def evaluate(
         self,
         dataset: Dataset, 
-        test_dir: Path,
+        output_dir: Path,
     ):
-        loader = DataLoader(dataset, batch_size=32, shuffle=False)
+        eval_batch_size = 2 * self.batch_size
+        loader = DataLoader(dataset, batch_size=eval_batch_size, shuffle=False)
         self.model.eval()
-        print('------ Evaluating ------')
-        print(f'Num steps: {len(loader)}')
-        print(f'Num examples: {len(dataset)}')
+        self.log('------ Evaluating ------')
+        self.log(f'Num steps: {len(loader)}')
+        self.log(f'Num examples: {len(dataset)}')
+        self.log(f'batch_size: {eval_batch_size}')
         
         total_loss = 0
         all_preds = []
         all_labels = []
         with torch.no_grad():
-            for batch in loader:
+            for step, batch in enumerate(loader):
                 inputs, labels = batch
                 logits = self.model(inputs.to(self.device))
                 loss = self.loss_fn(logits, labels.to(self.device))
@@ -157,7 +162,14 @@ class Trainer:
                 
                 total_loss += loss.item()
                 
-        preds_file = test_dir / 'preds.json'
+                if (step + 1) % self.log_interval == 0:
+                    self.log({
+                        'step': step,
+                        'loss': total_loss / (step + 1),
+                    })
+                
+                
+        preds_file = output_dir / 'preds.json'
         json.dump(all_preds, open(preds_file, 'w'), indent=4)
         # Compute top-k accuracy
         acc = {}
@@ -167,7 +179,9 @@ class Trainer:
                 if label in preds[:k]:
                     acc[k] += 1
             acc[k] /= len(all_labels)
-        print('------ Evaluation Done ------')
+        self.log(acc)
+        self.log('loss', total_loss / len(loader))
+        self.log('------ Evaluation Done ------')
         
         
         return {

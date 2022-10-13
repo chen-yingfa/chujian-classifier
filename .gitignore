@@ -10,3 +10,4 @@ data/chujian
 data/*.png
 ckpts/*pt
 result
+slurm-*.out

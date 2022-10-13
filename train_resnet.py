@@ -11,8 +11,8 @@ from modeling.resnet import ResNet
 from utils import get_param_cnt
 
 
-def load_model(img_size, num_classes) -> nn.Module:
-    model = ResNet(img_size, num_classes)
+def load_model(model_name, img_size, num_classes, pretrained: bool) -> nn.Module:
+    model = ResNet(model_name, img_size, num_classes, pretrained=pretrained)
     return model
 
 
@@ -23,6 +23,8 @@ def parse_args() -> Namespace:
     p.add_argument('--num_epochs', type=int, default=10)
     p.add_argument('--mode', default='train_test')
     p.add_argument('--output_dir', default='result/temp')
+    p.add_argument('--pretrained', type=bool, default=True)
+    p.add_argument('--model_name', default='resnet18')
     return p.parse_args()
 
 
@@ -33,7 +35,7 @@ def main():
     
     train_dir = Path('/data/private/chenyingfa/chujian/glyphs_955_train')
     test_dir = Path('/data/private/chenyingfa/chujian/glyphs_955_test')
-    img_size = (50, 50)
+    img_size = (64, 64)
     num_classes = 955
     
     lr = args.lr
@@ -62,13 +64,15 @@ def main():
     test_data = ChujianDataset(test_dir, test_transform, False)
 
     print('Loading model...', flush=True)
-    model = load_model(img_size, num_classes)
+    model = load_model(
+        args.model_name, img_size, num_classes, args.pretrained)
     print(f'Params: {get_param_cnt(model)}')
     print('Instantiating trainer...', flush=True)
     trainer = Trainer(
         model, 
         output_dir,
         batch_size=args.batch_size,
+        num_epochs=args.num_epochs,
         log_interval=50,
         lr=args.lr,
     )
