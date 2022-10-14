@@ -85,6 +85,7 @@ class Trainer:
             self.log({
                 'epoch': self.cur_ep,
                 'step': self.cur_step,
+                'lr': self.scheduler.get_last_lr()[0],
                 'loss': round(self.total_loss / self.cur_step, 4),
                 'time': round(time.time() - self.train_start_time, 2),
             }, flush=True)

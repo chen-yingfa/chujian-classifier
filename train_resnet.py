@@ -33,12 +33,12 @@ def main():
     
     args = parse_args()
     
-    train_dir = Path('/data/private/chenyingfa/chujian/glyphs_955_train')
-    test_dir = Path('/data/private/chenyingfa/chujian/glyphs_955_test')
+    train_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/train')
+    dev_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/dev')
+    test_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/test')
     img_size = (64, 64)
     num_classes = 955
     
-    lr = args.lr
     output_dir = Path(args.output_dir)
     
     train_transform = transforms.Compose([
@@ -60,8 +60,6 @@ def main():
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
-    train_data = ChujianDataset(train_dir, train_transform, True)
-    test_data = ChujianDataset(test_dir, test_transform, False)
     # print(train_data.classes)
     # for idx in [
     #     83,
@@ -93,8 +91,11 @@ def main():
     )
     
     if 'train' in args.mode:
+        train_data = ChujianDataset(train_dir, train_transform, True)
+        dev_data = ChujianDataset(dev_dir, test_transform, False)
         trainer.train(train_data, test_data)
     if 'test' in args.mode:
+        test_data = ChujianDataset(test_dir, test_transform, False)
         test_output_dir = output_dir / 'test'
         result = trainer.evaluate(
             test_data, test_output_dir)
