@@ -12,7 +12,7 @@ def get_parser():
     p.add_argument("--batch_size", type=int, default=512)
     # 改了，原100
     p.add_argument("--epochs", type=int, default=6)
-    p.add_argument("--lr", type=float, default=0.0005)
+    p.add_argument("--lr", type=float, default=0.002)
     # 学习率衰减用的
     p.add_argument(
         "--lr_step",

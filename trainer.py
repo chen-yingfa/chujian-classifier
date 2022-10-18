@@ -85,7 +85,7 @@ class Trainer:
         if self.cur_step % self.log_interval == 0:
             self.log(
                 {
-                    "epoch": round(self.cur_ep / len(self.train_loader), 3),
+                    "epoch": round(self.cur_step / len(self.train_loader), 3),
                     "step": self.cur_step,
                     "lr": round(self.scheduler.get_last_lr()[0], 6),
                     "loss": round(self.total_loss / self.cur_step, 4),
@@ -145,7 +145,7 @@ class Trainer:
         dataset: Dataset,
         output_dir: Path,
     ):
-        eval_batch_size = 2 * self.batch_size
+        eval_batch_size = 4 * self.batch_size
         loader = DataLoader(dataset, batch_size=eval_batch_size, shuffle=False)
         self.model.eval()
         self.log("------ Evaluating ------")

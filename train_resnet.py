@@ -20,7 +20,7 @@ def load_model(
 
 def parse_args() -> Namespace:
     p = ArgumentParser()
-    p.add_argument("--lr", type=float, default=0.002)
+    p.add_argument("--lr", type=float, default=0.005)
     p.add_argument("--batch_size", type=int, default=256)
     p.add_argument("--num_epochs", type=int, default=10)
     p.add_argument("--mode", default="train_test")
