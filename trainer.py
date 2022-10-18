@@ -28,7 +28,7 @@ class Trainer:
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(
-            self.optimizer, step_size=7, gamma=0.1
+            self.optimizer, step_size=1, gamma=0.5,
         )
         self.loss_fn = nn.CrossEntropyLoss()
         self.model.to(device)
@@ -62,8 +62,8 @@ class Trainer:
         self.train_start_time = time.time()
         self.log(f"Start epoch {self.cur_ep}")
         for batch in train_loader:
-            self.cur_step += 1
             self.train_step(batch)
+        self.scheduler.step()
         self.log("Epoch done")
 
     def train_step(self, batch: tuple):
@@ -78,7 +78,6 @@ class Trainer:
         # Backward pass
         loss.backward()
         self.optimizer.step()
-        self.scheduler.step()
         self.optimizer.zero_grad()
 
         self.cur_step += 1
@@ -86,9 +85,9 @@ class Trainer:
         if self.cur_step % self.log_interval == 0:
             self.log(
                 {
-                    "epoch": self.cur_ep,
+                    "epoch": round(self.cur_ep / len(self.train_loader), 3),
                     "step": self.cur_step,
-                    "lr": self.scheduler.get_last_lr()[0],
+                    "lr": round(self.scheduler.get_last_lr()[0], 6),
                     "loss": round(self.total_loss / self.cur_step, 4),
                     "time": round(time.time() - self.train_start_time, 2),
                 },
@@ -101,7 +100,7 @@ class Trainer:
         dev_data: Dataset,
     ):
         self.train_log_file = open(self.train_log_path, "w")
-        train_loader = DataLoader(
+        self.train_loader = DataLoader(
             train_data,
             batch_size=self.batch_size,
             shuffle=True,
@@ -109,14 +108,14 @@ class Trainer:
         self.cur_ep = 0
 
         self.log("------ Training ------")
-        self.log(f"  Num steps: {len(train_loader)}")
+        self.log(f"  Num steps: {len(self.train_loader)}")
         self.log(f"  Num examples: {len(train_data)}")
         self.log(f"  Num epochs: {self.num_epochs}")
         self.log(f"  Batch size: {self.batch_size}")
         self.log(f"  Log interval: {self.log_interval}")
 
         while self.cur_ep < self.num_epochs:
-            self.train_epoch(train_loader)
+            self.train_epoch(self.train_loader)
             self.validate(dev_data)
             self.cur_ep += 1
         self.log("------ Training Done ------")

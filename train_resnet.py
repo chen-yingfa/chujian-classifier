@@ -20,13 +20,14 @@ def load_model(
 
 def parse_args() -> Namespace:
     p = ArgumentParser()
-    p.add_argument("--lr", type=float, default=0.0001)
+    p.add_argument("--lr", type=float, default=0.002)
     p.add_argument("--batch_size", type=int, default=256)
     p.add_argument("--num_epochs", type=int, default=10)
     p.add_argument("--mode", default="train_test")
-    p.add_argument("--output_dir", default="result/temp")
+    p.add_argument("--output_dir", default="result/glyphs_955")
     p.add_argument("--pretrained", type=bool, default=True)
     p.add_argument("--model_name", default="resnet18")
+    p.add_argument("--log_interval", type=int, default=10)
     return p.parse_args()
 
 
@@ -34,16 +35,20 @@ def main():
     assert torch.cuda.is_available(), "CUDA is not available"
 
     args = parse_args()
-    train_dir = Path("./data/chujian/train")
-    dev_dir = Path("./data/chujian/dev")
-    test_dir = Path("./data/chujian/test")
+    train_dir = Path("./data/chujian/glyphs_955/train")
+    dev_dir = Path("./data/chujian/glyphs_955/dev")
+    test_dir = Path("./data/chujian/glyphs_955/test")
     # train_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/train")
     # dev_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/dev")
     # test_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/test")
     img_size = (64, 64)
     num_classes = 955
 
-    output_dir = Path(args.output_dir)
+    output_dir = Path(
+        args.output_dir,
+        args.model_name,
+        f"lr{args.lr}-bs{args.batch_size}-ep{args.num_epochs}",
+    )
 
     train_transform = transforms.Compose(
         [
@@ -93,7 +98,7 @@ def main():
         output_dir,
         batch_size=args.batch_size,
         num_epochs=args.num_epochs,
-        log_interval=50,
+        log_interval=args.log_interval,
         lr=args.lr,
     )
 

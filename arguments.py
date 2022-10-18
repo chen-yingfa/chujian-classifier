@@ -3,44 +3,60 @@ import argparse
 
 def get_parser():
     p = argparse.ArgumentParser()
-    p.add_argument('--train_dir', default='./data/chujian/glyphs_955/train')
-    p.add_argument('--test_dir', default='./data/chujian/glyphs_955/test')
+    p.add_argument("--train_dir", default="./data/chujian/glyphs_955/train")
+    p.add_argument("--test_dir", default="./data/chujian/glyphs_955/test")
+    p.add_argument("--output_dir", default="./result/glyphs_955")
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--cuda", type=bool, default=True)
+    p.add_argument("--mode", default="train_test")
+    p.add_argument("--batch_size", type=int, default=512)
     # 改了，原100
-    p.add_argument('--epochs', type=int, default=6)
-    p.add_argument('--lr', type=float, default=0.05)
+    p.add_argument("--epochs", type=int, default=6)
+    p.add_argument("--lr", type=float, default=0.0005)
     # 学习率衰减用的
     p.add_argument(
-        '-lrS', '--lr_scheduler_step', type=int, default=20,
-        help='StepLR learning rate scheduler step, default=20')
+        "--lr_step",
+        type=int,
+        default=1,
+        help="StepLR learning rate scheduler step, default=20",
+    )
 
     p.add_argument(
-        '-lrG', '--lr_scheduler_gamma', type=float, default=0.5,
-        help='StepLR learning rate scheduler gamma, default=0.5')
+        "--lr_gamma",
+        type=float,
+        default=0.8,
+        help="StepLR learning rate scheduler gamma, default=0.5",
+    )
     # 改了，原100
     p.add_argument(
-        '-its', '--iterations',
-        type=int, default=200,
-        help='number of episodes per epoch, default=100',
+        "-its",
+        "--iterations",
+        type=int,
+        default=200,
+        help="number of episodes per epoch, default=100",
     )
 
     p.add_argument(
-        '-cTr', '--classes_per_it_tr',
+        "-cTr",
+        "--classes_per_it_tr",
         type=int,
         default=100,
-        help='number of random classes per episode for training, default=60',
+        help="number of random classes per episode for training, default=60",
     )
 
     p.add_argument(
-        '-nsTr', '--num_support_tr',
+        "-nsTr",
+        "--num_support_tr",
         type=int,
         default=5,
-        help='number of samples per class to use as support for training',
+        help="number of samples per class to use as support for training",
     )
     p.add_argument(
-        '-nqTr', '--num_query_tr',
+        "-nqTr",
+        "--num_query_tr",
         type=int,
         default=5,
-        help='number of samples per class to use as query for training',
+        help="number of samples per class to use as query for training",
     )
 
     # No validation now...
@@ -65,9 +81,5 @@ def get_parser():
     #     help='number of samples per class to use as query for validation',
     #     default=4,
     # )
-    p.add_argument('--seed', type=int, default=0)
-    p.add_argument('--cuda', type=bool, default=True)
-    p.add_argument('--mode', default='train_test')
-    p.add_argument('--output_dir', default='./result/glyphs_955')
 
     return p
