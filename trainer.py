@@ -61,7 +61,7 @@ class Trainer:
         self.model.train()
         self.cur_step = 0
         self.total_loss = 0
-        self.train_start_time = time.time()
+        self.epoch_start_time = time.time()
         self.log(f"Start epoch {self.cur_ep}")
         for batch in train_loader:
             self.train_step(batch)
@@ -93,7 +93,8 @@ class Trainer:
                     "step": self.cur_step,
                     "lr": round(self.scheduler.get_last_lr()[0], 6),
                     "loss": round(self.total_loss / self.cur_step, 4),
-                    "time": round(time.time() - self.train_start_time, 2),
+                    "time": round(time.time() - self.train_start_time),
+                    "epoch_time": round(time.time() - self.epoch_start_time),
                 },
                 flush=True,
             )
@@ -110,6 +111,7 @@ class Trainer:
             shuffle=True,
         )
         self.cur_ep = 0
+        self.train_start_time = time.time()
 
         self.log("------ Training ------")
         self.log(f"  Num steps: {len(self.train_loader)}")
