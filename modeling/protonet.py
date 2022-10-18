@@ -4,21 +4,21 @@ from torch.nn import functional as F
 
 
 def conv_block(in_channels, out_channels):
-    '''
+    """
     returns a block conv-bn-relu-pool
-    '''
+    """
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
         nn.BatchNorm2d(out_channels),
         nn.ReLU(),
-        nn.MaxPool2d(2)
+        nn.MaxPool2d(2),
     )
 
 
 class ProtoNet(nn.Module):
-    '''
+    """
     Consists of 4 conv blocks and 1 fully connected layer
-    '''
+    """
 
     def __init__(
         self,
@@ -30,10 +30,12 @@ class ProtoNet(nn.Module):
     ):
         super(ProtoNet, self).__init__()
         self.encoder = nn.Sequential(
-            conv_block(input_chan, hidden_chan),     # -> (B, 64, H/2, W/2)
-            conv_block(hidden_chan, hidden_chan),   # -> (B, 64, H/4, W/4)
-            conv_block(hidden_chan, hidden_chan),   # -> (B, 64, H/8, W/8)
-            conv_block(hidden_chan, conv_output_chan),     # -> (B, 32, H/16, W/16)
+            conv_block(input_chan, hidden_chan),  # -> (B, 64, H/2, W/2)
+            conv_block(hidden_chan, hidden_chan),  # -> (B, 64, H/4, W/4)
+            conv_block(hidden_chan, hidden_chan),  # -> (B, 64, H/8, W/8)
+            conv_block(
+                hidden_chan, conv_output_chan
+            ),  # -> (B, 32, H/16, W/16)
         )
         # h = img_size[0]
         # w = img_size[1]
@@ -42,17 +44,17 @@ class ProtoNet(nn.Module):
 
     def forward(self, x):
         # print(x.size())           # x: (B, 3, H, W)
-        x = self.encoder(x)         # -> (B, 64, H/16, W/16)
-        x = x.view(x.size(0), -1)   # -> (B, z_dim * H/16 * W/16)
+        x = self.encoder(x)  # -> (B, 64, H/16, W/16)
+        x = x.view(x.size(0), -1)  # -> (B, z_dim * H/16 * W/16)
         # x = self.fc(x)              # -> (B, output_dim)
         return x
 
 
 class PrototypicalLoss(nn.Module):
-    '''
+    """
     Loss class deriving from Module for the prototypical loss function defined
     below
-    '''
+    """
 
     def __init__(self, n_support):
         super(PrototypicalLoss, self).__init__()
@@ -63,13 +65,13 @@ class PrototypicalLoss(nn.Module):
 
 
 def euclidean_dist(x: Tensor, y: Tensor) -> Tensor:
-    '''
+    """
     Compute euclidean distance between two tensors
 
     Params:
     - x: Tensor of shape (n, d), n is the number of samples, d is the feature.
     - y: Tensor of shape (c, d), representation vectors of prototypes.
-    '''
+    """
     n = x.size(0)  # 300
     c = y.size(0)  # 60
     d = x.size(1)  # 576
@@ -80,12 +82,8 @@ def euclidean_dist(x: Tensor, y: Tensor) -> Tensor:
     return torch.pow(x - y, 2).sum(2)
 
 
-def prototypical_loss(
-    hidden: Tensor,
-    labels: Tensor,
-    num_support: int
-):
-    '''
+def prototypical_loss(hidden: Tensor, labels: Tensor, num_support: int):
+    """
     Inspired by https://github.com/jakesnell/prototypical-networks/blob/master/protonets/models/few_shot.py
 
     Compute the barycentres by averaging the features of n_support
@@ -100,9 +98,9 @@ def prototypical_loss(
     - labels: ground truth for the above batch of samples
     - n_support: number of samples to keep in account when computing
       barycentres, for each one of the current classes
-    '''  # noqa
-    labels = labels.to('cpu')   # (B)
-    hidden = hidden.to('cpu')   # (B, C)
+    """  # noqa
+    labels = labels.to("cpu")  # (B)
+    hidden = hidden.to("cpu")  # (B, C)
 
     # FIXME when torch.unique will be available on cuda too
     # 返回有哪些 class（returns the unique elements of the input tensor）
@@ -119,28 +117,31 @@ def prototypical_loss(
     # 所以取第一个 class 来算就行了，
     # 在这个 episode 里面取到的总样本数减去 n_support 就是 n_query
     support_idxs = [
-        labels.eq(c).nonzero()[:num_support].squeeze(1) for c in classes]
+        labels.eq(c).nonzero()[:num_support].squeeze(1) for c in classes
+    ]
     # 对于每一个 class（label），
     # .eq 判断 target 的每一位是否是这个 label，
     # .nonzero: return indices of all nonzero elements
     # [:n_support] 从里面取出 n_support 作为支撑集，
     # squeeze 将其从 (n_support, 1) 压缩为 n_support 的 tensor
 
-    prototypes = torch.stack([hidden[idx_list].mean(
-        0) for idx_list in support_idxs])  # 计算每一个label的c_k（representation）
+    prototypes = torch.stack(
+        [hidden[idx_list].mean(0) for idx_list in support_idxs]
+    )  # 计算每一个label的c_k（representation）
 
     # FIXME when torch will support where as np
     # query_idxs = torch.stack(
     #     list(map(lambda c: target_cpu.eq(c).nonzero()[n_support:], classes))
     # )
     query_idxs = torch.stack(
-        [labels.eq(c).nonzero()[num_support:] for c in classes])
+        [labels.eq(c).nonzero()[num_support:] for c in classes]
+    )
 
     query_idxs = query_idxs.view(-1)
 
     # 获取查询集的对应编号，但是最后那个view(-1)啥意思啊
 
-    query_samples = hidden.to('cpu')[query_idxs]
+    query_samples = hidden.to("cpu")[query_idxs]
     # 是按class的顺序排的
 
     # (n_query*n_classes)*n_classes

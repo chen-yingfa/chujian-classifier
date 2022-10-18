@@ -33,11 +33,12 @@ class ResNet(nn.Module):
         pretrained: bool,
     ):
         super().__init__()
-        
+
         self.resnet18 = torch.hub.load(
-            'pytorch/vision:v0.10.0', model_name, pretrained=pretrained)
+            "pytorch/vision:v0.10.0", model_name, pretrained=pretrained
+        )
         self.fc = nn.Linear(1000, num_classes)
-        
+
         # self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3)
         # self.bn1 = nn.BatchNorm2d(64)
         # self.relu = nn.ReLU(inplace=True)

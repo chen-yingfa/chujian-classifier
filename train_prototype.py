@@ -115,6 +115,7 @@ def train(
     log_interval = 4
     steps_per_spoch = len(train_loader)
 
+    print('# params:', sum(p.numel() for p in model.parameters()))
     print('------ Training ------')
     print(f'Log interval: {log_interval}')
     print(f'Steps per epoch: {steps_per_spoch}')
@@ -145,6 +146,7 @@ def train(
                 log_stats = {
                     'epoch': round(ep + step / steps_per_spoch, 2),
                     'step': step,
+                    'lr': round(scheduler.get_last_lr()[0], 6),
                     'acc': round(acc.item(), 4),
                     'loss': round(loss.item(), 5),
                 }
@@ -272,6 +274,7 @@ def test(
     num_classes: int,
     img_size: tuple = (50, 50),
     hidden_dim: int = 576,
+    use_prototypes_cache: bool = False
 ) -> dict:
     '''
     Perform test on model
@@ -292,7 +295,7 @@ def test(
     # TODO: This needs to take into account for classes that are not in the
     # training set.
     prototypes_cache = Path(args.output_dir, 'prototypes.pt')
-    if prototypes_cache.exists():
+    if use_prototypes_cache and prototypes_cache.exists():
         prototypes = torch.load(prototypes_cache)
     else:
         train_dataset = ChujianDataset(

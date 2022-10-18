@@ -3,13 +3,11 @@ import argparse
 
 def get_parser():
     p = argparse.ArgumentParser()
-    p.add_argument('--train_dir', default='./data/chujian/glyphs_train')
-    p.add_argument('--test_dir', default='./data/chujian/glyphs_test')
+    p.add_argument('--train_dir', default='./data/chujian/glyphs_955/train')
+    p.add_argument('--test_dir', default='./data/chujian/glyphs_955/test')
     # 改了，原100
     p.add_argument('--epochs', type=int, default=6)
-    p.add_argument(
-        '--lr', type=float, default=0.00005,
-        help='learning rate for the model, default=0.001')
+    p.add_argument('--lr', type=float, default=0.05)
     # 学习率衰减用的
     p.add_argument(
         '-lrS', '--lr_scheduler_step', type=int, default=20,
@@ -70,6 +68,6 @@ def get_parser():
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--cuda', type=bool, default=True)
     p.add_argument('--mode', default='train_test')
-    p.add_argument('--output_dir', default='./result/glyphs_8349')
+    p.add_argument('--output_dir', default='./result/glyphs_955')
 
     return p
