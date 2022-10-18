@@ -11,8 +11,8 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from modeling.protonet import ProtoNet, prototypical_loss, euclidean_dist
-from arguments import get_parser
-from sampler import PrototypicalBatchSampler
+from protonet.arguments import get_parser
+from protonet.sampler import PrototypicalBatchSampler
 from utils import set_seed, mean, dump_json
 from dataset import ChujianDataset
 
@@ -172,11 +172,15 @@ def train(
             end="\n\n",
         )
 
+        # Save checkpoint
         ckpt_dir = output_dir / "ckpts"
         ckpt_dir.mkdir(exist_ok=True, parents=True)
         ckpt_file = ckpt_dir / f"ckpt_{ep}.pt"
         print(f"Saving checkpoint to {ckpt_file}")
         torch.save(model.state_dict(), ckpt_file)
+
+        # Validate
+
         scheduler.step()
     print("------ Done Training ------")
     return
@@ -287,7 +291,7 @@ def test(
     output_dir: Path,
     img_size: tuple = (50, 50),
     hidden_dim: int = 576,
-    use_prototypes_cache: bool = False,
+    use_prototypes_cache: bool = True,
 ) -> dict:
     """
     Perform test on model
@@ -398,7 +402,19 @@ def main() -> None:
     model, optim, scheduler = initialize(args)
     IMG_SIZE = (50, 50)
 
-    output_dir = Path(args.output_dir, f"lr{args.lr}-ep{args.epochs}")
+    output_dir = Path(
+        args.output_dir,
+        "prototype",
+        "lr{}-lr_step{}-lr_gamma{}-ep{}-class_per_it{}-it_per_ep{}".format(
+            args.lr,
+            args.lr_step,
+            args.lr_gamma,
+            args.epochs,
+            args.classes_per_it,
+            args.iters_per_epoch,
+        )
+    )
+    output_dir.mkdir(exist_ok=True, parents=True)
     json.dump(vars(args), open(output_dir / "args.json", "w"), indent=2)
 
     if "train" in args.mode:

@@ -4,12 +4,13 @@ import argparse
 def get_parser():
     p = argparse.ArgumentParser()
     p.add_argument("--train_dir", default="./data/chujian/glyphs_955/train")
+    p.add_argument("--dev_dir", default="./data/chujian/glyphs_955/dev")
     p.add_argument("--test_dir", default="./data/chujian/glyphs_955/test")
     p.add_argument("--output_dir", default="./result/glyphs_955")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--cuda", type=bool, default=True)
     p.add_argument("--mode", default="train_test")
-    p.add_argument("--batch_size", type=int, default=512)
+    p.add_argument("--batch_size", type=int, default=1024)
     # 改了，原100
     p.add_argument("--epochs", type=int, default=6)
     p.add_argument("--lr", type=float, default=0.002)
@@ -17,22 +18,19 @@ def get_parser():
     p.add_argument(
         "--lr_step",
         type=int,
-        default=1,
+        default=2,
         help="StepLR learning rate scheduler step, default=20",
     )
-
     p.add_argument(
         "--lr_gamma",
         type=float,
         default=0.8,
         help="StepLR learning rate scheduler gamma, default=0.5",
     )
-    # 改了，原100
     p.add_argument(
-        "-its",
-        "--iterations",
+        "--iters_per_epoch",
         type=int,
-        default=200,
+        default=100,
         help="number of episodes per epoch, default=100",
     )
 
@@ -40,7 +38,7 @@ def get_parser():
         "-cTr",
         "--classes_per_it_tr",
         type=int,
-        default=100,
+        default=200,
         help="number of random classes per episode for training, default=60",
     )
 
