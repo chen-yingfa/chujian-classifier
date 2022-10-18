@@ -28,7 +28,9 @@ class Trainer:
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(
-            self.optimizer, step_size=1, gamma=0.5,
+            self.optimizer,
+            step_size=1,
+            gamma=0.5,
         )
         self.loss_fn = nn.CrossEntropyLoss()
         self.model.to(device)
@@ -85,7 +87,9 @@ class Trainer:
         if self.cur_step % self.log_interval == 0:
             self.log(
                 {
-                    "epoch": round(self.cur_step / len(self.train_loader), 3),
+                    "epoch": round(
+                        self.cur_ep + self.cur_step / len(self.train_loader), 3
+                    ),
                     "step": self.cur_step,
                     "lr": round(self.scheduler.get_last_lr()[0], 6),
                     "loss": round(self.total_loss / self.cur_step, 4),
