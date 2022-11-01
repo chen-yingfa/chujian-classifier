@@ -8,14 +8,19 @@ from torchvision import transforms
 
 from dataset import ChujianDataset
 from trainer import Trainer
-from modeling.vit import Vit
+# from modeling.vit import Vit
+from modeling.vit import SmallVit
 from utils import get_param_cnt
 
 
 def load_model(
     model_name, img_size, num_classes, pretrained: bool
 ) -> nn.Module:
-    model = Vit(model_name, img_size, num_classes, pretrained=pretrained)
+    # model = Vit(model_name, img_size, num_classes, pretrained=pretrained)
+    model = SmallVit(
+        img_size=img_size,
+        num_classes=num_classes,
+    )
     return model
 
 
@@ -27,7 +32,7 @@ def parse_args() -> Namespace:
     p.add_argument("--mode", default="train_test")
     p.add_argument("--output_dir", default="result/glyphs_955")
     p.add_argument("--pretrained", type=bool, default=True)
-    p.add_argument("--model_name", default="vit_base_patch16_224")
+    p.add_argument("--model_name", default="vit_small_patch16_224")
     p.add_argument("--log_interval", type=int, default=10)
     return p.parse_args()
 

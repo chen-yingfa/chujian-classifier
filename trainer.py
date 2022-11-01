@@ -156,8 +156,12 @@ class Trainer:
         eval_batch_size = 4 * self.batch_size
         loader = DataLoader(dataset, batch_size=eval_batch_size, shuffle=False)
         self.model.eval()
-        self.test_log_file = open(self.test_log_path, 'r', encoding='utf8')
-        self.log_file = self.test_log_file
+        if self.train_log_file.closed:
+            self.logging_test = True
+            self.test_log_file = open(self.test_log_path, 'w', encoding='utf8')
+            self.log_file = self.test_log_file
+        else:
+            self.logging_test = False
         self.log("------ Evaluating ------")
         self.log(f"Num steps: {len(loader)}")
         self.log(f"Num examples: {len(dataset)}")
@@ -199,7 +203,8 @@ class Trainer:
         self.log("loss", total_loss / len(loader))
         self.log("------ Evaluation Done ------")
 
-        self.test_log_file.close()
+        if self.logging_test:
+            self.test_log_file.close()
 
         return {
             "loss": total_loss / len(loader),
