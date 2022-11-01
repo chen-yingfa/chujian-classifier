@@ -14,7 +14,7 @@ class Trainer:
         output_dir: Path,
         num_epochs: int = 2,
         batch_size: int = 4,
-        lr: float = 0.0001,
+        lr: float = 0.005,
         log_interval: int = 10,
         device: str = "cuda",
     ):
@@ -29,7 +29,7 @@ class Trainer:
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer,
-            step_size=1,
+            step_size=2,
             gamma=0.5,
         )
         self.loss_fn = nn.CrossEntropyLoss()

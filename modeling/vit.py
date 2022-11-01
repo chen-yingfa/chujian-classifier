@@ -39,10 +39,9 @@ class SmallVit(nn.Module):
             patch_size: int = 16,
             in_chans: int = 3,
             num_classes: int = 1000,
-            embed_dim: int = 512,
+            embed_dim: int = 768,
             depth: int = 12,
-            num_heads: int = 8,
-            mlp_ratio: float = 4.,
+            num_heads: int = 12,
     ):
         """
         Args:
