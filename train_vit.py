@@ -28,7 +28,7 @@ def parse_args() -> Namespace:
     p = ArgumentParser()
     p.add_argument("--lr", type=float, default=0.005)
     p.add_argument("--batch_size", type=int, default=64)
-    p.add_argument("--num_epochs", type=int, default=10)
+    p.add_argument("--num_epochs", type=int, default=16)
     p.add_argument("--mode", default="train_test")
     p.add_argument("--output_dir", default="result/glyphs_955")
     p.add_argument("--pretrained", type=bool, default=True)
@@ -49,7 +49,7 @@ def main():
     # train_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/train")
     # dev_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/dev")
     # test_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/test")
-    img_size = (64, 64)
+    img_size = (224, 224)
     num_classes = 955
 
     output_dir = Path(
