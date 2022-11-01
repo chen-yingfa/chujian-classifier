@@ -37,6 +37,7 @@ class Trainer:
 
         output_dir.mkdir(exist_ok=True, parents=True)
         self.train_log_path = output_dir / "train.log"
+        self.test_log_path = output_dir / "test.log"
 
         # Dump training args
         train_args = {
@@ -51,11 +52,11 @@ class Trainer:
             ]
         }
         args_file = output_dir / "train_args.json"
-        json.dump(train_args, args_file.open("w"), indent=4)
+        json.dump(train_args, args_file.open("w", encoding='utf8'), indent=4)
 
     def log(self, *args, **kwargs):
         print(*args, **kwargs)
-        print(*args, **kwargs, file=self.train_log_file)
+        print(*args, **kwargs, file=self.log_file)
 
     def train_epoch(self, train_loader: DataLoader):
         self.model.train()
@@ -104,7 +105,8 @@ class Trainer:
         train_data: Dataset,
         dev_data: Dataset,
     ):
-        self.train_log_file = open(self.train_log_path, "w")
+        self.train_log_file = open(self.train_log_path, "w", encoding='utf8')
+        self.log_file = self.train_log_file
         self.train_loader = DataLoader(
             train_data,
             batch_size=self.batch_size,
@@ -133,7 +135,7 @@ class Trainer:
         result = self.evaluate(dev_data, dev_dir)
         del result["preds"]
         result_file = dev_dir / "result.json"
-        json.dump(result, open(result_file, "w"), indent=4)
+        json.dump(result, open(result_file, "w", encoding='utf8'), indent=4)
         self.save_ckpt(dev_dir / "ckpt.pt")
 
     def save_ckpt(self, ckpt_file: Path):
@@ -154,6 +156,8 @@ class Trainer:
         eval_batch_size = 4 * self.batch_size
         loader = DataLoader(dataset, batch_size=eval_batch_size, shuffle=False)
         self.model.eval()
+        self.test_log_file = open(self.test_log_path, 'r', encoding='utf8')
+        self.log_file = self.test_log_file
         self.log("------ Evaluating ------")
         self.log(f"Num steps: {len(loader)}")
         self.log(f"Num examples: {len(dataset)}")
@@ -182,7 +186,7 @@ class Trainer:
                     )
 
         preds_file = output_dir / "preds.json"
-        json.dump(all_preds, open(preds_file, "w"), indent=4)
+        json.dump(all_preds, open(preds_file, "w", encoding='utf8'), indent=4)
         # Compute top-k accuracy
         acc = {}
         for k in [1, 3, 5, 10]:
@@ -194,6 +198,8 @@ class Trainer:
         self.log(acc)
         self.log("loss", total_loss / len(loader))
         self.log("------ Evaluation Done ------")
+
+        self.test_log_file.close()
 
         return {
             "loss": total_loss / len(loader),
