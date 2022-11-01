@@ -1,6 +1,7 @@
 from pathlib import Path
 from argparse import ArgumentParser, Namespace
 import json
+from typing import Tuple
 
 import torch
 from torch import nn
@@ -8,19 +9,17 @@ from torchvision import transforms
 
 from dataset import ChujianDataset
 from trainer import Trainer
-# from modeling.vit import Vit
-from modeling.vit import SmallVit
+from modeling.vit import Vit
 from utils import get_param_cnt
 
 
 def load_model(
-    model_name, img_size, num_classes, pretrained: bool
+    model_name: str,
+    img_size: Tuple[int, int],
+    num_classes: int,
+    pretrained: bool
 ) -> nn.Module:
-    # model = Vit(model_name, img_size, num_classes, pretrained=pretrained)
-    model = SmallVit(
-        img_size=img_size,
-        num_classes=num_classes,
-    )
+    model = Vit(model_name, img_size, num_classes, pretrained=pretrained)
     return model
 
 
@@ -32,7 +31,7 @@ def parse_args() -> Namespace:
     p.add_argument("--mode", default="train_test")
     p.add_argument("--output_dir", default="result/glyphs_955")
     p.add_argument("--pretrained", type=bool, default=True)
-    p.add_argument("--model_name", default="vit_small_patch16_224")
+    p.add_argument("--model_name", default="vit_base_patch16_224")
     p.add_argument("--log_interval", type=int, default=10)
     return p.parse_args()
 
@@ -84,22 +83,6 @@ def main():
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ]
     )
-
-    # print(train_data.classes)
-    # for idx in [
-    #     83,
-    #     56,
-    #     190,
-    #     603,
-    #     67,
-    #     81,
-    #     475,
-    #     452,
-    #     95,
-    #     152
-    # ]:
-    #     print(train_data.classes[idx])
-    # exit()
 
     print("Instantiating trainer...", flush=True)
     trainer = Trainer(
