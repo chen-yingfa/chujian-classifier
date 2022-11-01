@@ -3,12 +3,12 @@ import torch
 
 
 class PrototypicalBatchSampler(object):
-    '''
+    """
     PrototypicalBatchSampler: yield a batch of indexes at each iteration.
     Indexes are calculated by keeping in account 'classes_per_it' and
     'num_samples', in fact at every iteration the batch indexes will refer to
     'num_support' + 'num_query' samples for 'classes_per_it' random classes.
-    '''
+    """
 
     def __init__(
         self,
@@ -17,7 +17,7 @@ class PrototypicalBatchSampler(object):
         samples_per_class: int,
         num_iters: int,
     ):
-        '''
+        """
         Initialize the PrototypicalBatchSampler object
 
         Params:
@@ -27,7 +27,7 @@ class PrototypicalBatchSampler(object):
         - num_samples: number of samples for each iteration for each class
         (support + query)
         - num_iters: number of iterations (episodes) per epoch
-        '''
+        """
         super(PrototypicalBatchSampler, self).__init__()
         self.labels = labels
         self.classes_per_it = classes_per_it
@@ -36,19 +36,22 @@ class PrototypicalBatchSampler(object):
 
         # 类，与类的数量
         self.classes, self.counts = np.unique(
-            self.labels, return_counts=True)  # 每个标签有多少个数量
+            self.labels, return_counts=True
+        )  # 每个标签有多少个数量
         self.classes = torch.LongTensor(self.classes)
 
-        '''
+        """
         1. Create a matrix `indexes`, (# class, max # elements in class)
         2. Fill it with `np.nan`
         3. For every class c, fill the relative row with the indices samples
            belonging to c
         4. In numel_per_class we store the number of samples for each class/row
-        '''
+        """
         # The i'th row stores the example indices belonging to class i.
-        self.class_to_idxs = np.empty(
-            shape=(len(self.classes), max(self.counts)), dtype=int) * np.nan
+        self.class_to_idxs = (
+            np.empty(shape=(len(self.classes), max(self.counts)), dtype=int)
+            * np.nan
+        )
         self.class_to_idxs = torch.Tensor(self.class_to_idxs)
         # The i'th element is the number of examples with class i.
         self.class_to_numels = torch.zeros_like(self.classes)
@@ -59,16 +62,17 @@ class PrototypicalBatchSampler(object):
             class_idx = np.argwhere(self.classes == label).item()
             # 把第一个是 nan 的替换成 idx
             # 第 class_idx 行就是属于这个 class 的所有样本的 index
-            first_nan_col = np.where(
-                np.isnan(self.class_to_idxs[class_idx]))[0][0]
+            first_nan_col = np.where(np.isnan(self.class_to_idxs[class_idx]))[
+                0
+            ][0]
             self.class_to_idxs[class_idx, first_nan_col] = idx
             # label_idx 总共有多少个属于它的数据
             self.class_to_numels[class_idx] += 1
 
     def __iter__(self) -> torch.LongTensor:
-        '''
+        """
         yield a batch of indexes
-        '''
+        """
         # support的数量 + query的数量（default: 5+5）
         samples_per_class = self.sample_per_class
         num_classes = self.classes_per_it  # (default: 50)
@@ -85,7 +89,7 @@ class PrototypicalBatchSampler(object):
             cur_slice_lo = 0
             # for i, c in enumerate(self.classes[class_indices]):
             for class_idx in class_idxs:
-                '''
+                """
                 If self.classes = [1, 2, 5]
                 class_indices = [0, 2]
                 then during i=0, c=1, during i=1, c=5
@@ -95,18 +99,20 @@ class PrototypicalBatchSampler(object):
                 when i=1:
                     self.classes == c will return [False, False, True]
                     => label_idx = 2
-                '''
+                """
                 class_num_examples = self.class_to_numels[class_idx]
 
                 # Sample `samples_per_class` examples for this class.
                 if class_num_examples > samples_per_class:
-                    col_idxs = torch.randperm(
-                        class_num_examples)[:samples_per_class]
+                    col_idxs = torch.randperm(class_num_examples)[
+                        :samples_per_class
+                    ]
                 else:
                     # If there are not enough examples for this class,
                     # repeatedly sample with replacement.
                     col_idxs = torch.randint(
-                        0, class_num_examples.item(),
+                        0,
+                        class_num_examples.item(),
                         size=(samples_per_class,),
                     )
                 # print('-------')
@@ -124,7 +130,7 @@ class PrototypicalBatchSampler(object):
             yield batch
 
     def __len__(self):
-        '''
+        """
         returns the number of iterations (episodes) per epoch
-        '''
+        """
         return self.num_iters

@@ -5,12 +5,12 @@ import random
 
 
 class ChujianDataset(Dataset):
-    '''
+    """
     Replacement for ImageFolder that supports empty subdirs.
 
     Args:
         root (string): Root directory path.
-        transform (callable, optional): 
+        transform (callable, optional):
             A function/transform that takes in an PIL image.
         shuffle (bool, optional): Whether to shuffle the dataset.
 
@@ -18,11 +18,11 @@ class ChujianDataset(Dataset):
         classes (list): List of the class names sorted alphabetically.
         class_to_idx (dict): Dict with items (class_name, class_index).
         imgs (list): List of (image path, class_index) tuples
-    '''
+    """
 
     def __init__(
         self,
-        root: str,
+        root: Path,
         transform=None,
         shuffle: bool = False,
     ):
@@ -42,23 +42,24 @@ class ChujianDataset(Dataset):
             cls_idx = len(self.classes) - 1
 
             image_paths = sorted(glyph_dir.iterdir())
-            
-            # Always pick 1000 images from 
-            class_size = max(100, len(image_paths))
-            image_paths = random.choices(image_paths, k=class_size)
+
+            # # Always pick 1000 images from each class.
+            # class_size = max(100, len(image_paths))
+            # image_paths = random.choices(image_paths, k=class_size)
+
             for image_path in image_paths:
                 self.imgs.append((image_path, cls_idx))
         if shuffle:
             random.shuffle(self.imgs)
-        
-        # Duplicate all images to make the dataset balanced.
-        for idx in range(len(self.imgs)):
-            self.imgs.append(self.imgs[idx])
+
+        # # Duplicate all images to make the dataset balanced.
+        # for idx in range(len(self.imgs)):
+        #     self.imgs.append(self.imgs[idx])
 
     def __getitem__(self, idx: int) -> tuple:
-        '''
+        """
         Return (image, class_index)
-        '''
+        """
         image, label = self.imgs[idx]
         image = Image.open(image)
         if self.transform:
