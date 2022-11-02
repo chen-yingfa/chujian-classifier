@@ -22,7 +22,7 @@ class ChujianDataset(Dataset):
 
     def __init__(
         self,
-        root: str,
+        root: Path,
         transform=None,
         shuffle: bool = False,
     ):

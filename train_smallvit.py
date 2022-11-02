@@ -1,5 +1,7 @@
 from pathlib import Path
 from argparse import ArgumentParser, Namespace
+from typing import Tuple
+import json
 
 import torch
 from torch import nn
@@ -7,26 +9,35 @@ from torchvision import transforms
 
 from dataset import ChujianDataset
 from trainer import Trainer
-from modeling.resnet import ResNet
+from modeling.vit import SmallVit
 from utils import get_param_cnt
 
 
 def load_model(
-    model_name, img_size, num_classes, pretrained: bool
+    img_size: Tuple[int, int],
+    num_classes: int,
+    args: Namespace,
 ) -> nn.Module:
-    model = ResNet(model_name, img_size, num_classes, pretrained=pretrained)
+    model = SmallVit(
+        img_size=img_size,
+        num_classes=num_classes,
+        embed_dim=args.embed_dim,
+        depth=args.depth,
+    )
     return model
 
 
 def parse_args() -> Namespace:
     p = ArgumentParser()
     p.add_argument("--lr", type=float, default=0.005)
-    p.add_argument("--batch_size", type=int, default=256)
-    p.add_argument("--num_epochs", type=int, default=10)
+    p.add_argument("--batch_size", type=int, default=128)
+    p.add_argument("--num_epochs", type=int, default=20)
+    p.add_argument("--embed_dim", type=int, default=768)
+    p.add_argument("--depth", type=int, default=12)
     p.add_argument("--mode", default="train_test")
     p.add_argument("--output_dir", default="result/glyphs_955")
     p.add_argument("--pretrained", type=bool, default=True)
-    p.add_argument("--model_name", default="resnet50")
+    p.add_argument("--model_name", default="smallvit")
     p.add_argument("--log_interval", type=int, default=10)
     return p.parse_args()
 
@@ -35,6 +46,8 @@ def main():
     assert torch.cuda.is_available(), "CUDA is not available"
 
     args = parse_args()
+    print(json.dumps(args.__dict__, indent=4))
+
     train_dir = Path("./data/chujian/glyphs_955/train")
     dev_dir = Path("./data/chujian/glyphs_955/dev")
     test_dir = Path("./data/chujian/glyphs_955/test")
@@ -47,8 +60,13 @@ def main():
     output_dir = Path(
         args.output_dir,
         args.model_name,
-        f"lr{args.lr}-bs{args.batch_size}-ep{args.num_epochs}",
+        f"lr{args.lr}-bs{args.batch_size}-ep{args.num_epochs}"
+        f"-depth{args.depth}-dim{args.embed_dim}",
     )
+
+    print("Loading model...", flush=True)
+    model = load_model(img_size, num_classes, args)
+    print(f"Params: {get_param_cnt(model)}")
 
     train_transform = transforms.Compose(
         [
@@ -73,9 +91,6 @@ def main():
         ]
     )
 
-    print("Loading model...", flush=True)
-    model = load_model(args.model_name, img_size, num_classes, args.pretrained)
-    print(f"Params: {get_param_cnt(model)}")
     print("Instantiating trainer...", flush=True)
     trainer = Trainer(
         model,

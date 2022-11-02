@@ -1,6 +1,6 @@
 # Chujian Classifier
 
-Implementation of Prototypical Network on classification of Chujian (楚简) characters.
+Implementation of Prototypical Network on classification of Chujian (楚简) characters. Support Prototypical Network using CNN, ResNet and ViT.
 
 ## Data
 
@@ -16,14 +16,28 @@ Set the output path with `--output_dir`.
 Execute
 
 ```bash
-python3 train.py
+python3 train_protonet.py
+python3 train_resnet.py
+python3 train_vit.py
 ```
 
 ### Testing
 
 ```bash
-python3 train.py --mode test
+python3 train_protonet.py --mode test
+python3 train_resnet.py --mode test
+python3 train_vit.py --mode test
 ```
+
+## Result
+
+| Model     | Accuracy  |
+| ---       | ---       |
+| CNN       | <50       |
+| ResNet-50 | 0.85      |
+| ViT       | ?         |
+
+> Note that ResNet and ViT are pretrained on ImageNet.
 
 ## Acknowledgements 
 

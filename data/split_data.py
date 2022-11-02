@@ -8,10 +8,13 @@ from tqdm import tqdm
 # data_dir = Path('./chujian/glyphs_small')
 # train_dir = Path('./chujian/glyphs_small_train')
 # test_dir = Path('./chujian/glyphs_small_test')
-data_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/all')
-train_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/train')
-dev_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/dev')
-test_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/test')
+
+data_dir = Path('/data/private/chenyingfa/chujian/glyphs_955')
+
+src_dir = data_dir / 'all'
+train_dir = data_dir / 'train'
+dev_dir = data_dir / 'dev'
+test_dir = data_dir / 'test'
 
 data_dir = Path('/data/private/chenyingfa/chujian/glyphs_merged_all/all')
 train_dir = Path('/data/private/chenyingfa/chujian/glyphs_merged_all/train')
@@ -24,7 +27,7 @@ test_dir.mkdir(exist_ok=True, parents=True)
 
 # Make all glyph dirs, such that train and test have the same classes.
 print('Creating glyph dirs...')
-for glyph_dir in data_dir.iterdir():
+for glyph_dir in src_dir.iterdir():
     glyph_name = glyph_dir.name
     train_glyph_dir = train_dir / glyph_name
     dev_glyph_dir = dev_dir / glyph_name
@@ -35,7 +38,7 @@ for glyph_dir in data_dir.iterdir():
 
 print('Looping image files...')
 images = {}
-for glyph_dir in data_dir.iterdir():
+for glyph_dir in src_dir.iterdir():
     glyph = glyph_dir.name
     images[glyph] = []
     for image in glyph_dir.iterdir():
@@ -50,6 +53,7 @@ test_images = {}
 for glyph, image_files in images.items():
     random.seed(0)
     random.shuffle(image_files)
+    # Floored to make sure test and dev has at least one example.
     split_idx = [
         int(len(image_files) * 0.8),
         int(len(image_files) * 0.9),

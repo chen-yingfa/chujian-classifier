@@ -13,17 +13,21 @@ def dump_json(data, file):
     )
 
 
-glyph_count_file = Path('glyph_count.json')
-DATA_DIR = Path('chujian/glyphs')
+GLYPH_CNT_FILE = Path('glyph_count.json')
+SRC_DIR = Path('/data/private/chenyingfa/chujian/glyphs')
+DST_DIR = Path('/data/private/chenyingfa/chujian/glyphs_955/all')
 
-if not glyph_count_file.exists():
+merged_to_orig_file = DST_DIR / 'new_to_orig_name.json'
+
+
+if not GLYPH_CNT_FILE.exists():
     glyph_cnt = {}
-    for glyph_dir in sorted(DATA_DIR.iterdir()):
+    for glyph_dir in sorted(SRC_DIR.iterdir()):
         glyph_cnt[glyph_dir.name] = len(
             [image for image in glyph_dir.iterdir()])
     dump_json(glyph_cnt, 'glyph_count.json')
 else:
-    glyph_cnt = json.load(open(glyph_count_file, 'r', encoding='utf-8'))
+    glyph_cnt = json.load(open(GLYPH_CNT_FILE, 'r', encoding='utf-8'))
 
 
 merged = defaultdict(int)
@@ -92,17 +96,18 @@ merged = {k: v for k, v in merged_sorted}
 dump_json(merged, 'merged_glyph_count.json')
 new_to_old_name = {k: v for k, v in new_to_old_name.items() if k in merged}
 
+dump_json(new_to_old_name, merged_to_orig_file)
+
 print(f'Found {len(merged)} glyphs')
 
 # Copy glyphs over
-DST_DIR = Path('chujian/glyphs_merged')
 for i, (new_name, old_names) in enumerate(new_to_old_name.items()):
     print(f'{i} Copying {old_names} to {new_name}')
     # Create the new dir
     dst_glyph_dir = DST_DIR / new_name
     dst_glyph_dir.mkdir(exist_ok=True, parents=True)
     for old_name in old_names:
-        src_dir = DATA_DIR / old_name
+        src_dir = SRC_DIR / old_name
         for src_file in src_dir.iterdir():
             dst_file = dst_glyph_dir / src_file.name
             copyfile(src_file, dst_file)
