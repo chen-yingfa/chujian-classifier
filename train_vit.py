@@ -31,7 +31,7 @@ def parse_args() -> Namespace:
     p.add_argument("--mode", default="train_test")
     p.add_argument("--output_dir", default="result/glyphs_955")
     p.add_argument("--pretrained", type=bool, default=True)
-    p.add_argument("--model_name", default="vit_base_patch16_224")
+    p.add_argument("--model_name", default="vit_base_patch16_224_in21k")
     p.add_argument("--log_interval", type=int, default=10)
     return p.parse_args()
 
