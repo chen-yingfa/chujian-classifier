@@ -13,6 +13,11 @@ train_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/train')
 dev_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/dev')
 test_dir = Path('/data/private/chenyingfa/chujian/glyphs_955/test')
 
+data_dir = Path('/data/private/chenyingfa/chujian/glyphs_merged_all/all')
+train_dir = Path('/data/private/chenyingfa/chujian/glyphs_merged_all/train')
+dev_dir = Path('/data/private/chenyingfa/chujian/glyphs_merged_all/dev')
+test_dir = Path('/data/private/chenyingfa/chujian/glyphs_merged_all/test')
+
 train_dir.mkdir(exist_ok=True, parents=True)
 dev_dir.mkdir(exist_ok=True, parents=True)
 test_dir.mkdir(exist_ok=True, parents=True)

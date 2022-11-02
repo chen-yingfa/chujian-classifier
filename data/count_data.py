@@ -2,7 +2,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 # data_dir = Path('./chujian/glyphs_small_train')
-data_dir = Path('./chujian/glyphs_955_train')
+data_dir = Path('./chujian/glyphs_955/train')
+# data_dir = Path('./chujian/glyphs')
 glyph_cnts = {}
 for glyph_dir in data_dir.iterdir():
     glyph_cnts[glyph_dir.name] = len(list(glyph_dir.iterdir()))
@@ -31,6 +32,7 @@ print('------')
 graph_file = 'class_occurrence.png'
 print(f'Plotting and saving graph to {graph_file}')
 cnts = [cnt for _, cnt in cnts]
+plt.rc('font', size=13)
 plt.plot(cnts)
 plt.xlabel('Glyphs')
 plt.ylabel('Number of images')
