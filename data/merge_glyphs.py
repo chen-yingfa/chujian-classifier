@@ -35,18 +35,6 @@ merged = defaultdict(int)
 new_to_old_name = defaultdict(list)
 for glyph, cnt in glyph_cnt.items():
     orig = glyph
-    # Discard all glyphs containing these chars.
-    DISCARD_CHARS = [
-        '?'
-        '□', '■',
-        '○', '●',
-        '△', '▲',
-        '☆', '★',
-        '◇', '◆',
-        '□'
-    ]
-    if any(c in glyph for c in DISCARD_CHARS):
-        continue
 
     # Normalize the glyph label
     RM_STRS = [
@@ -85,6 +73,19 @@ for glyph, cnt in glyph_cnt.items():
         glyph = '將'
     if glyph == '𫵖':
         glyph = '尸示'
+
+    # Discard all glyphs containing these chars.
+    DISCARD_CHARS = [
+        '?'
+        '□', '■',
+        '○', '●',
+        '△', '▲',
+        '☆', '★',
+        '◇', '◆',
+        '□'
+    ]
+    if any(c in glyph for c in DISCARD_CHARS):
+        continue
 
     merged[glyph] += cnt
     new_to_old_name[glyph].append(orig)
