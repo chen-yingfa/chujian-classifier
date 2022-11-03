@@ -15,6 +15,7 @@ class Trainer:
         num_epochs: int = 2,
         batch_size: int = 4,
         lr: float = 0.005,
+        lr_gamma: float = 0.7,
         log_interval: int = 10,
         device: str = "cuda",
     ):
@@ -29,8 +30,8 @@ class Trainer:
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer,
-            step_size=2,
-            gamma=0.5,
+            step_size=1,
+            gamma=lr_gamma,
         )
         self.loss_fn = nn.CrossEntropyLoss()
         self.model.to(device)
@@ -100,20 +101,42 @@ class Trainer:
                 flush=True,
             )
 
+    def resume(self):
+        ckpt_dirs = self.get_ckpt_dirs()
+        if len(ckpt_dirs) == 0:
+            raise ValueError("No checkpoint found")
+        ckpt_dir = ckpt_dirs[-1]
+        self.load_ckpt(ckpt_dir / "ckpt.pt")
+        self.cur_ep = int(ckpt_dir.name.split("_")[-1])
+        self.log_file = open(ckpt_dir / "train.log", "a", encoding='utf8')
+        self.train_log_file = self.log_file
+        self.log("Resuming from", ckpt_dir)
+
+    def get_ckpt_dirs(self) -> list:
+        return sorted(self.output_dir.glob("ckpt_*"))
+
+    def has_ckpt(self) -> bool:
+        return len(self.get_ckpt_dirs()) > 0
+
     def train(
         self,
         train_data: Dataset,
         dev_data: Dataset,
+        do_resume: bool = True,
     ):
-        self.train_log_file = open(self.train_log_path, "w", encoding='utf8')
-        self.log_file = self.train_log_file
         self.train_loader = DataLoader(
             train_data,
             batch_size=self.batch_size,
             shuffle=True,
         )
-        self.cur_ep = 0
-        self.train_start_time = time.time()
+        if do_resume and self.has_ckpt():
+            self.resume()
+        else:
+            self.cur_ep = 0
+            self.log_file = open(self.train_log_path, "w", encoding='utf8')
+            self.train_log_file = self.log_file
+            self.cur_ep = 0
+            self.train_start_time = time.time()
 
         self.log("------ Training ------")
         self.log(f"  Num steps: {len(self.train_loader)}")
@@ -132,11 +155,12 @@ class Trainer:
     def validate(self, dev_data: Dataset):
         dev_dir = self.output_dir / f"ckpt_{self.cur_ep}"
         dev_dir.mkdir(exist_ok=True, parents=True)
+        self.save_ckpt(dev_dir / "ckpt.pt")
+
         result = self.evaluate(dev_data, dev_dir)
         del result["preds"]
         result_file = dev_dir / "result.json"
         json.dump(result, open(result_file, "w", encoding='utf8'), indent=4)
-        self.save_ckpt(dev_dir / "ckpt.pt")
 
     def save_ckpt(self, ckpt_file: Path):
         print(f"Saving checkpoint to {ckpt_file}")
@@ -145,7 +169,7 @@ class Trainer:
 
     def load_ckpt(self, path: str) -> nn.Module:
         print(f"Loading checkpoint from {path}")
-        sd = torch.load(self.output_dir / path)
+        sd = torch.load(path)
         self.model.load_state_dict(sd)
 
     def evaluate(

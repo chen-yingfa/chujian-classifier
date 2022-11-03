@@ -25,11 +25,30 @@ def load_model(
 
 def parse_args() -> Namespace:
     p = ArgumentParser()
-    p.add_argument("--lr", type=float, default=0.005)
+    p.add_argument("--lr", type=float, default=0.0001)
+    p.add_argument("--lr_gamma", type=float, default=0.8)
     p.add_argument("--batch_size", type=int, default=64)
     p.add_argument("--num_epochs", type=int, default=16)
     p.add_argument("--mode", default="train_test")
-    p.add_argument("--output_dir", default="result/glyphs_955")
+    p.add_argument(
+        "--train_dir",
+        default="E:/donny/code/school/research/chujian/data/glyphs_955/train",
+        # default="E:/donny/code/school/research/chujian/chujian-classifier/data/chujian/glyphs_small_train",
+    )
+    p.add_argument(
+        "--dev_dir",
+        default="E:/donny/code/school/research/chujian/data/glyphs_955/dev",
+        # default="E:/donny/code/school/research/chujian/chujian-classifier/data/chujian/glyphs_small_test",
+    )
+    p.add_argument(
+        "--test_dir", 
+        default="E:/donny/code/school/research/chujian/data/glyphs_955/test",
+    )
+    p.add_argument(
+        "--output_dir", 
+        default="result/glyphs_955",
+        # default="result/glyphs_small"，
+    )
     p.add_argument("--pretrained", type=bool, default=True)
     p.add_argument("--model_name", default="vit_base_patch16_224_in21k")
     p.add_argument("--log_interval", type=int, default=10)
@@ -42,36 +61,37 @@ def main():
     args = parse_args()
     print(json.dumps(args.__dict__, indent=4))
 
-    train_dir = Path("./data/chujian/glyphs_955/train")
-    dev_dir = Path("./data/chujian/glyphs_955/dev")
-    test_dir = Path("./data/chujian/glyphs_955/test")
+    train_dir = Path(args.train_dir)
+    dev_dir = Path(args.dev_dir)
+    test_dir = Path(args.test_dir)
     # train_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/train")
     # dev_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/dev")
     # test_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/test")
-    img_size = (224, 224)
     num_classes = 955
+    img_size = (224, 224)
 
     output_dir = Path(
         args.output_dir,
         args.model_name,
-        f"lr{args.lr}-bs{args.batch_size}-ep{args.num_epochs}",
+        f"lr{args.lr}-gamma{args.lr_gamma}"
+        f"-bs{args.batch_size}-ep{args.num_epochs}",
     )
 
     print("Loading model...", flush=True)
-    model = load_model(args.model_name, img_size, num_classes, args.pretrained)
+    model = load_model(
+        args.model_name, img_size, num_classes, args.pretrained)
     print(f"Params: {get_param_cnt(model)}")
 
     train_transform = transforms.Compose(
         [
-            transforms.Resize(img_size),
+            transforms.Resize((256, 256)),
+            transforms.RandomCrop(img_size),
             transforms.ToTensor(),
-            # TODO: Add more transformations: data augmentation, normalize etc.
+            # Data augmentation
             transforms.GaussianBlur(kernel_size=3),
-            transforms.RandomResizedCrop(img_size),
-            # transforms.RandomPosterize(bits=2),
             transforms.RandomAdjustSharpness(sharpness_factor=4),
-            transforms.RandomInvert(),
-            transforms.RandomAutocontrast(),
+            # transforms.RandomInvert(),
+            # transforms.RandomAutocontrast(),
             transforms.RandomGrayscale(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ]
@@ -92,6 +112,7 @@ def main():
         num_epochs=args.num_epochs,
         log_interval=args.log_interval,
         lr=args.lr,
+        lr_gamma=args.lr_gamma,
     )
 
     if "train" in args.mode:

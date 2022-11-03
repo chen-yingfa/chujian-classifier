@@ -24,7 +24,25 @@ def parse_args() -> Namespace:
     p.add_argument("--batch_size", type=int, default=256)
     p.add_argument("--num_epochs", type=int, default=10)
     p.add_argument("--mode", default="train_test")
-    p.add_argument("--output_dir", default="result/glyphs_955")
+    p.add_argument(
+        "--train_dir",
+        default="E:/donny/code/school/research/chujian/data/glyphs_955/train",
+        # default="E:/donny/code/school/research/chujian/chujian-classifier/data/chujian/glyphs_small_train",
+    )
+    p.add_argument(
+        "--dev_dir",
+        default="E:/donny/code/school/research/chujian/data/glyphs_955/dev",
+        # default="E:/donny/code/school/research/chujian/chujian-classifier/data/chujian/glyphs_small_test",
+    )
+    p.add_argument(
+        "--test_dir", 
+        default="E:/donny/code/school/research/chujian/data/glyphs_955/test",
+    )
+    p.add_argument(
+        "--output_dir", 
+        default="result/glyphs_955",
+        # default="result/glyphs_small"，
+    )
     p.add_argument("--pretrained", type=bool, default=True)
     p.add_argument("--model_name", default="resnet50")
     p.add_argument("--log_interval", type=int, default=10)
@@ -35,6 +53,10 @@ def main():
     assert torch.cuda.is_available(), "CUDA is not available"
 
     args = parse_args()
+    
+    train_dir = Path(args.train_dir)
+    dev_dir = Path(args.dev_dir)
+    test_dir = Path(args.test_dir)
     train_dir = Path("./data/chujian/glyphs_955/train")
     dev_dir = Path("./data/chujian/glyphs_955/dev")
     test_dir = Path("./data/chujian/glyphs_955/test")
