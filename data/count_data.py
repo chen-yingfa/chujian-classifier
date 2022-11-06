@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 # data_dir = Path('./chujian/glyphs_small_train')
 data_dir = Path('./chujian/glyphs_955/train')
-# data_dir = Path('./chujian/glyphs')
+data_dir = Path('/data/private/chenyingfa/chujian/glyphs')
 glyph_cnts = {}
 for glyph_dir in data_dir.iterdir():
     glyph_cnts[glyph_dir.name] = len(list(glyph_dir.iterdir()))

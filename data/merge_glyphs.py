@@ -1,7 +1,12 @@
 from pathlib import Path
 import json
+import random
 from collections import defaultdict
-from shutil import copyfile
+from typing import Dict, List, Tuple
+
+
+def dict_size(d) -> int:
+    return sum(len(v) for v in d.values())
 
 
 def dump_json(data, file):
@@ -13,68 +18,13 @@ def dump_json(data, file):
     )
 
 
-GLYPH_CNT_FILE = Path('glyph_count.json')
-SRC_DIR = Path('/data/private/chenyingfa/chujian/glyphs')
-DST_DIR = Path('/data/private/chenyingfa/chujian/glyphs_955/all')
-
-merged_to_orig_file = DST_DIR / 'new_to_orig_name.json'
-
-
-if not GLYPH_CNT_FILE.exists():
-    glyph_cnt = {}
-    for glyph_dir in sorted(SRC_DIR.iterdir()):
-        glyph_cnt[glyph_dir.name] = len(
-            [image for image in glyph_dir.iterdir()])
-    dump_json(glyph_cnt, 'glyph_count.json')
-else:
-    glyph_cnt = json.load(open(GLYPH_CNT_FILE, 'r', encoding='utf-8'))
-
-
-merged = defaultdict(int)
-# Map new glyph name to old glyph name
-new_to_old_name = defaultdict(list)
-for glyph, cnt in glyph_cnt.items():
-    orig = glyph
-
-    # Normalize the glyph label
-    RM_STRS = [
-        '=', 'None'
-    ]
-    for c in RM_STRS:
-        glyph = glyph.replace(c, '')
-
-    # Replace brackets
-    for c in ['（', '〈', '[']:
-        glyph = glyph.replace(c, '(')
-    for c in ['）', '〉', ']']:
-        glyph = glyph.replace(c, ')')
-    # If the label ends with (.), use the glyph inside the brackets
-    if glyph == '':
-        continue
-
-    if glyph[-1] == ')':
-        for i in range(len(glyph) - 1, -1, -1):
-            if glyph[i] == '(':
-                # "（*）"
-                if i == 0:
-                    glyph = glyph[1:-1]
-                else:
-                    # "*}（*）"
-                    if glyph[i-1] == '}':
-                        glyph = glyph[i+1:-1]
-                    # "A（*）" -> "A"
-                    else:
-                        glyph = glyph[0]
-                break
-    # "A→B"
-    if '→' in glyph:
-        glyph = glyph.split('→')[1]
-    if glyph == '𬨭':
-        glyph = '將'
-    if glyph == '𫵖':
-        glyph = '尸示'
-
-    # Discard all glyphs containing these chars.
+def merged_glyphs(glyphs: List[str]) -> Dict[str, str]:
+    '''
+    Return {new_name: [old_names]}
+    '''
+    # Map new glyph name to old glyph name
+    new_to_old_name = defaultdict(list)
+    # Discard all glyphs containing these chars (after preprocessing label)
     DISCARD_CHARS = [
         '?'
         '□', '■',
@@ -84,31 +34,177 @@ for glyph, cnt in glyph_cnt.items():
         '◇', '◆',
         '□'
     ]
-    if any(c in glyph for c in DISCARD_CHARS):
-        continue
 
-    merged[glyph] += cnt
-    new_to_old_name[glyph].append(orig)
+    for glyph in glyphs:
+        orig = glyph
+        # Normalize the glyph label
+        RM_STRS = [
+            '=', 'None'
+        ]
+        for c in RM_STRS:
+            glyph = glyph.replace(c, '')
 
-# Remove the glyphs with less than 10 samples
-merged = {k: v for k, v in merged.items() if v >= 10}
-merged_sorted = sorted(merged.items(), key=lambda x: x[1], reverse=True)
-merged = {k: v for k, v in merged_sorted}
-dump_json(merged, 'merged_glyph_count.json')
-new_to_old_name = {k: v for k, v in new_to_old_name.items() if k in merged}
+        # Replace brackets
+        for c in ['（', '〈', '[']:
+            glyph = glyph.replace(c, '(')
+        for c in ['）', '〉', ']']:
+            glyph = glyph.replace(c, ')')
 
-dump_json(new_to_old_name, merged_to_orig_file)
+        if glyph == '':
+            continue
 
-print(f'Found {len(merged)} glyphs')
+        if glyph[-1] == ')':
+            for i in range(len(glyph) - 2, -1, -1):
+                if glyph[i] == '(':
+                    # "（*）"
+                    if glyph[i] == '(':
+                        if glyph[i+1:-1] == '○':
+                            glyph = glyph[:i]
+                        else:
+                            glyph = glyph[i+1:-1]
+                    else:
+                        # "*}（*）"
+                        if glyph[i-1] == '}':
+                            glyph = glyph[i+1:-1]
+                        # "A（*）" -> "A"
+                        else:
+                            glyph = glyph[0]
+                    break
+            else:
+                glyph = glyph[:-1]
+        # "A→B"
+        if '→' in glyph:
+            glyph = glyph.split('→')[1]
+        if glyph == '𬨭':
+            glyph = '將'
+        if glyph == '𫵖':
+            glyph = '尸示'
 
-# Copy glyphs over
-for i, (new_name, old_names) in enumerate(new_to_old_name.items()):
-    print(f'{i} Copying {old_names} to {new_name}')
-    # Create the new dir
-    dst_glyph_dir = DST_DIR / new_name
-    dst_glyph_dir.mkdir(exist_ok=True, parents=True)
-    for old_name in old_names:
-        src_dir = SRC_DIR / old_name
-        for src_file in src_dir.iterdir():
-            dst_file = dst_glyph_dir / src_file.name
-            copyfile(src_file, dst_file)
+        if any(c in glyph for c in DISCARD_CHARS):
+            # if '○' in glyph:
+            #     print(orig)
+            #     print(glyph)
+            #     exit()
+            continue
+        new_to_old_name[glyph].append(orig)
+    return new_to_old_name
+
+
+def get_glyph_cnt(src_dir: Path) -> Dict[str, int]:
+    glyph_cnt_file = Path(src_dir, 'glyph_count.json')
+    if not glyph_cnt_file.exists():
+        glyph_cnt = {}
+        for glyph_dir in sorted(SRC_DIR.iterdir()):
+            glyph_cnt[glyph_dir.name] = len(
+                [image for image in glyph_dir.iterdir()])
+        dump_json(glyph_cnt, 'glyph_count.json')
+    else:
+        glyph_cnt = json.load(open(glyph_cnt_file, 'r', encoding='utf-8'))
+    return glyph_cnt
+
+
+def get_glyph_to_files(src_dir: Path) -> Dict[str, List[str]]:
+    glyph_to_files = {}
+    for src_glyph_dir in src_dir.iterdir():
+        name = src_glyph_dir.name
+        glyph_to_files[name] = []
+        for file in src_glyph_dir.iterdir():
+            glyph_to_files[name].append(str(file))
+    return glyph_to_files
+
+
+def split_data(glyph_to_files: dict) -> Tuple[dict, dict, dict]:
+    # Split into train and test set
+    # For each class, split by 8:1:1 ratio.
+    print("Splitting...")
+    train_images = {}
+    dev_images = {}
+    test_images = {}
+    for glyph, image_files in glyph_to_files.items():
+        random.seed(0)
+        random.shuffle(image_files)
+        # Floored to make sure test and dev has at least one example.
+        split_idx = [
+            int(len(image_files) * 0.9),
+            int(len(image_files) * 0.95),
+        ]
+        train_images[glyph] = image_files[: split_idx[0]]
+        dev_images[glyph] = image_files[split_idx[0]:split_idx[1]]
+        test_images[glyph] = image_files[split_idx[1]:]
+    return train_images, dev_images, test_images
+
+
+def split_and_dump(glyph_to_files: dict, dst_dir: Path):
+    train_images, dev_images, test_images = split_data(glyph_to_files)
+
+    print("Train images:", dict_size(train_images))
+    print("Dev images:", dict_size(dev_images))
+    print("Test images:", dict_size(test_images))
+
+    dump_json(train_images, dst_dir / "train.json")
+    dump_json(dev_images, dst_dir / "dev.json")
+    dump_json(test_images, dst_dir / "test.json")
+
+
+def merge_and_dump(src_dir: Path, dst_dir: Path, k: int):
+    print('Getting glyph to files...')
+    orig_glyph_to_files = get_glyph_to_files(src_dir)
+    print('Merging glyphs...')
+    print(f'Before: {len(orig_glyph_to_files)} glyphs')
+    glyphs = list(orig_glyph_to_files.keys())
+    new_to_old_name = merged_glyphs(glyphs)
+    print(f'After: {len(new_to_old_name)} glyphs')
+
+    # Building new glyph to files
+    glyph_to_files = {}
+    for new_name, old_names in new_to_old_name.items():
+        glyph_to_files[new_name] = []
+        for old_name in old_names:
+            glyph_to_files[new_name].extend(orig_glyph_to_files[old_name])
+
+    num_examples = sum(len(files) for files in glyph_to_files.values())
+    print(f'Found {num_examples} examples')
+
+    # Remove the glyphs with less than k samples
+    print(f'Removing glyphs with less than {k} samples...')
+    glyph_to_files = {
+        glyph: files
+        for glyph, files in glyph_to_files.items() if len(files) >= k}
+    print(f'After: {len(glyph_to_files)} glyphs')
+    num_examples = sum(len(files) for files in glyph_to_files.values())
+    print(f'Found {num_examples} examples')
+
+    glyph_to_cnt = {k: len(v) for k, v in glyph_to_files.items()}
+
+    # Sort by descending count
+    merged_sorted = sorted(
+        glyph_to_cnt.items(), key=lambda x: x[1], reverse=True)
+    glyph_to_cnt = {k: v for k, v in merged_sorted}
+
+    glyph_to_cnt_file = dst_dir / 'glyph_to_count_sorted.json'
+    print(f'Dumping to {glyph_to_cnt_file}')
+    dump_json(glyph_to_cnt, glyph_to_cnt_file)
+    
+    merged_to_orig_file = dst_dir / 'new_to_orig_name.json'
+    print(f'Dumping to {merged_to_orig_file}')
+    dump_json(new_to_old_name, merged_to_orig_file)
+
+    glyph_to_files_file = dst_dir / "glyph_to_files.json"
+    print(f'Dumping to {glyph_to_files_file}')
+    dump_json(glyph_to_files, glyph_to_files_file)
+
+    # Split and dump
+    split_and_dump(glyph_to_files, dst_dir)
+
+
+def main():
+    for k in [0, 3, 10]:
+        print(f'========= k = {k} =========')
+        SRC_DIR = Path('/data/private/chenyingfa/chujian/glyphs')
+        DST_DIR = Path(f'/data/private/chenyingfa/chujian/glyphs_k-{k}')
+        DST_DIR.mkdir(exist_ok=True, parents=True)
+        merge_and_dump(SRC_DIR, DST_DIR, k)
+
+
+if __name__ == '__main__':
+    main()
