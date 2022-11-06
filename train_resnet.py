@@ -112,6 +112,7 @@ def main():
     if "test" in args.mode:
         test_data = ChujianDataset(test_dir, test_transform, False)
         test_output_dir = output_dir / "test"
+        trainer.load_best_ckpt()
         result = trainer.evaluate(test_data, test_output_dir)
         del result["preds"]
         print(result)

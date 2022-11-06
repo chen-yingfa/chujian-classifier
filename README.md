@@ -1,8 +1,10 @@
 # Chujian Classifier
 
-Implementation of Prototypical Network on classification of Chujian (楚简) characters. Support Prototypical Network using CNN, ResNet and ViT.
+Implementation of Prototypical Network on classification of Chujian (楚简) characters. Support Prototypical Network (based on CNN), ResNet and ViT.
 
 ## Data
+
+Preprocess the data into specific format with the code in `data` folder. See `data/README.md` for details.
 
 A small part (1,000 examples) of the entire Chujian dataset is extracted for convenience, it is located in `data/chujian/glyphs_small`. 
 
@@ -31,17 +33,17 @@ python3 train_vit.py --mode test
 
 ## Result
 
-| Model     | Accuracy  |
-| ---       | ---       |
-| CNN       | <50       |
-| ResNet-50 | 0.85      |
-| ViT       | ?         |
+| Model     | Top-1 Acc.    | Top-5 Acc.   | Top-10 Acc. |
+| ---       | ---           | ---          | ---        |
+| CNN       |               |              | 
+| ResNet-50 | 72.60         | 87.18        | 90.57      |
+| ViT       | 90.11         | 96.06        | 97.16      |
 
 > Note that ResNet and ViT are pretrained on ImageNet.
 
 ## Acknowledgements 
 
-Much of the code is copied from THUNLP's [IsOBS](https://github.com/thunlp/IsOBS). 
+Much of the code on prototypical network is copied from THUNLP's [IsOBS](https://github.com/thunlp/IsOBS). 
 
 
 

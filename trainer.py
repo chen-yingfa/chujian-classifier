@@ -39,6 +39,7 @@ class Trainer:
         output_dir.mkdir(exist_ok=True, parents=True)
         self.train_log_path = output_dir / "train.log"
         self.test_log_path = output_dir / "test.log"
+        self.log_file = None
 
         # Dump training args
         train_args = {
@@ -167,21 +168,47 @@ class Trainer:
         ckpt_file.parent.mkdir(exist_ok=True, parents=True)
         torch.save(self.model.state_dict(), ckpt_file)
 
-    def load_ckpt(self, path: str) -> nn.Module:
+    def load_ckpt(self, path: Path):
+        '''Load checkpoint from a path into `self.model`'''
         print(f"Loading checkpoint from {path}")
         sd = torch.load(path)
         self.model.load_state_dict(sd)
+
+    def get_best_ckpt(self, output_dir: Path) -> Path:
+        '''Load the best checkpoint based on loss.'''
+        ckpt_dirs = self.get_ckpt_dirs()
+        if len(ckpt_dirs) == 0:
+            raise ValueError("No checkpoint found")
+        best_ckpt_dir = ckpt_dirs[0]
+        best_loss = float("inf")
+        for ckpt_dir in ckpt_dirs[1:]:
+            result_file = ckpt_dir / "result.json"
+            result = json.load(open(result_file, "r", encoding='utf8'))
+            if best_ckpt_dir is None or result["loss"] < best_loss:
+                best_ckpt_dir = ckpt_dir
+                best_loss = result["loss"]
+        return best_ckpt_dir
+
+    def load_best_ckpt(self):
+        best_ckpt_dir = self.get_best_ckpt(self.output_dir)
+        self.load_ckpt(best_ckpt_dir / "ckpt.pt")
 
     def evaluate(
         self,
         dataset: Dataset,
         output_dir: Path,
     ):
+        '''
+        Perform evaluation on `self.model`, make sure you first call `load_best_ckpt` 
+        to load the best checkpoint.
+        '''
         eval_batch_size = 4 * self.batch_size
         loader = DataLoader(dataset, batch_size=eval_batch_size, shuffle=False)
         self.model.eval()
-        if self.train_log_file.closed:
+        if self.log_file is None or self.log_file.closed:
             self.logging_test = True
+            output_dir.mkdir(exist_ok=True, parents=True)
+            self.test_log_path = output_dir / "test.log"
             self.test_log_file = open(self.test_log_path, 'w', encoding='utf8')
             self.log_file = self.test_log_file
         else:
