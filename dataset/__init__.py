@@ -5,6 +5,7 @@ import random
 from torch.utils.data import Dataset
 from PIL import Image
 
+
 class ChujianDataset(Dataset):
     """
     Replacement for ImageFolder that supports empty subdirs.

@@ -31,22 +31,22 @@ def parse_args() -> Namespace:
     p.add_argument("--num_epochs", type=int, default=16)
     p.add_argument("--mode", default="train_test")
     p.add_argument(
-        "--train_dir",
-        default="E:/donny/code/school/research/chujian/data/glyphs_955/train",
+        "--train_json",
+        default="E:/donny/code/school/research/chujian/data/glyphs_k-3/train.json",
         # default="E:/donny/code/school/research/chujian/chujian-classifier/data/chujian/glyphs_small_train",
     )
     p.add_argument(
-        "--dev_dir",
-        default="E:/donny/code/school/research/chujian/data/glyphs_955/dev",
+        "--dev_json",
+        default="E:/donny/code/school/research/chujian/data/glyphs_k-3/dev.json",
         # default="E:/donny/code/school/research/chujian/chujian-classifier/data/chujian/glyphs_small_test",
     )
     p.add_argument(
-        "--test_dir", 
-        default="E:/donny/code/school/research/chujian/data/glyphs_955/test",
+        "--test_json",
+        default="E:/donny/code/school/research/chujian/data/glyphs_k-3/test.json",
     )
     p.add_argument(
-        "--output_dir", 
-        default="result/glyphs_955",
+        "--output_dir",
+        default="result/glyphs_k-3",
         # default="result/glyphs_small"，
     )
     p.add_argument("--pretrained", type=bool, default=True)
@@ -61,13 +61,13 @@ def main():
     args = parse_args()
     print(json.dumps(args.__dict__, indent=4))
 
-    train_dir = Path(args.train_dir)
-    dev_dir = Path(args.dev_dir)
-    test_dir = Path(args.test_dir)
+    train_json = Path(args.train_json)
+    dev_json = Path(args.dev_json)
+    test_json = Path(args.test_json)
     # train_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/train")
     # dev_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/dev")
     # test_dir = Path("/data/private/chenyingfa/chujian/glyphs_955/test")
-    num_classes = 955
+    num_classes = 2476
     img_size = (224, 224)
 
     output_dir = Path(
@@ -116,11 +116,11 @@ def main():
     )
 
     if "train" in args.mode:
-        train_data = ChujianDataset(train_dir, train_transform, True)
-        dev_data = ChujianDataset(dev_dir, test_transform, False)
+        train_data = ChujianDataset(train_json, train_transform, True)
+        dev_data = ChujianDataset(dev_json, test_transform, False)
         trainer.train(train_data, dev_data)
     if "test" in args.mode:
-        test_data = ChujianDataset(test_dir, test_transform, False)
+        test_data = ChujianDataset(test_json, test_transform, False)
         test_output_dir = output_dir / "test"
         trainer.load_best_ckpt()
         result = trainer.evaluate(test_data, test_output_dir)
