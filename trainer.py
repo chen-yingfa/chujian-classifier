@@ -107,11 +107,13 @@ class Trainer:
         if len(ckpt_dirs) == 0:
             raise ValueError("No checkpoint found")
         ckpt_dir = ckpt_dirs[-1]
-        self.load_ckpt(ckpt_dir / "ckpt.pt")
-        self.cur_ep = int(ckpt_dir.name.split("_")[-1])
-        self.log_file = open(ckpt_dir / "train.log", "a", encoding='utf8')
+        self.load_ckpt(ckpt_dir)
+        # +1 because the checkpoint is saved at the end of an epoch
+        self.cur_ep = int(ckpt_dir.name.split("_")[-1]) + 1
+        self.log_file = open(
+            self.output_dir / "train.log", "a", encoding='utf8')
         self.train_log_file = self.log_file
-        self.log("Resuming from", ckpt_dir)
+        self.log(f"\n====== Resuming from {ckpt_dir} ======")
         self.train_start_time = time.time()
 
     def get_ckpt_dirs(self) -> list:
@@ -133,7 +135,6 @@ class Trainer:
         )
         if do_resume and self.has_ckpt():
             self.resume()
-            self.cur_ep += 1
         else:
             self.cur_ep = 0
             self.log_file = open(self.train_log_path, "w", encoding='utf8')
@@ -141,7 +142,7 @@ class Trainer:
             self.cur_ep = 0
             self.train_start_time = time.time()
 
-        self.log("------ Training ------")
+        self.log("====== Training ======")
         self.log(f"  Num steps: {len(self.train_loader)}")
         self.log(f"  Num examples: {len(train_data)}")
         self.log(f"  Num epochs: {self.num_epochs}")
@@ -150,14 +151,15 @@ class Trainer:
 
         while self.cur_ep < self.num_epochs:
             self.train_epoch(self.train_loader)
-            self.validate(dev_data)
+            self.save_and_validate(dev_data)
             self.cur_ep += 1
-        self.log("------ Training Done ------")
+        self.log("====== Training Done ======")
         self.train_log_file.close()
 
-    def validate(self, dev_data: Dataset):
+    def save_and_validate(self, dev_data: Dataset):
         '''
-        Save current model as a checkpoint to `ckpt_{cur_ep}`
+        Save current model as a checkpoint to `ckpt_{cur_ep}` then
+        evaluate on dev set.
         '''
         dev_dir = self.output_dir / f"ckpt_{self.cur_ep}"
         dev_dir.mkdir(exist_ok=True, parents=True)
@@ -191,7 +193,7 @@ class Trainer:
         self.optimizer.load_state_dict(torch.load(optim_file))
         self.scheduler.load_state_dict(torch.load(scheduler_file))
 
-    def get_best_ckpt_dir(self, output_dir: Path) -> Path:
+    def get_best_ckpt_dir(self) -> Path:
         '''Load the best checkpoint based on loss.'''
         ckpt_dirs = self.get_ckpt_dirs()
         if len(ckpt_dirs) == 0:
@@ -207,7 +209,7 @@ class Trainer:
         return best_ckpt_dir
 
     def load_best_ckpt(self):
-        best_ckpt_dir = self.get_best_ckpt_dir(self.output_dir)
+        best_ckpt_dir = self.get_best_ckpt_dir()
         self.load_ckpt(best_ckpt_dir)
 
     def evaluate(
@@ -232,7 +234,7 @@ class Trainer:
             self.log_file = self.test_log_file
         else:
             self.logging_test = False
-        self.log("------ Evaluating ------")
+        self.log("====== Evaluating ======")
         self.log(f"Num steps: {len(loader)}")
         self.log(f"Num examples: {len(dataset)}")
         self.log(f"batch_size: {eval_batch_size}")
@@ -271,7 +273,7 @@ class Trainer:
             acc[k] /= len(all_labels)
         self.log(acc)
         self.log("loss", total_loss / len(loader))
-        self.log("------ Evaluation Done ------")
+        self.log("====== Evaluation Done ======")
 
         if self.logging_test:
             self.test_log_file.close()
