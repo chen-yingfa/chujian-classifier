@@ -1,8 +1,9 @@
+import json
 from pathlib import Path
-from torch.utils.data import Dataset
-from PIL import Image
 import random
 
+from torch.utils.data import Dataset
+from PIL import Image
 
 class ChujianDataset(Dataset):
     """
@@ -22,26 +23,26 @@ class ChujianDataset(Dataset):
 
     def __init__(
         self,
-        root: Path,
+        glyph_to_files_path: Path,
         transform=None,
         shuffle: bool = False,
     ):
         super().__init__()
-        self.root = Path(root)
+        self.glyph_to_files_path = Path(glyph_to_files_path)
         self.transform = transform
         self.shuffle = shuffle
 
         # Loop through root directory and get all classes and image paths.
+        self.glyph_to_files = json.load(
+            open(self.glyph_to_files_path, 'r', encoding='utf8'))
         self.imgs = []
         self.classes = []
         self.class_to_idx = {}
-        for glyph_dir in sorted(self.root.iterdir()):
-            if not glyph_dir.is_dir():
-                continue
-            self.classes.append(glyph_dir.name)
+        for glyph, files in self.glyph_to_files.items():
+            self.classes.append(glyph)
             cls_idx = len(self.classes) - 1
 
-            image_paths = sorted(glyph_dir.iterdir())
+            image_paths = sorted(files)
 
             # # Always pick 1000 images from each class.
             # class_size = max(100, len(image_paths))

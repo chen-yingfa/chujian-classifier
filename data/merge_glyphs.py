@@ -18,7 +18,7 @@ def dump_json(data, file):
     )
 
 
-def merged_glyphs(glyphs: List[str]) -> Dict[str, str]:
+def merged_glyphs(glyphs: List[str]) -> defaultdict[str, list]:
     '''
     Return {new_name: [old_names]}
     '''
@@ -88,19 +88,6 @@ def merged_glyphs(glyphs: List[str]) -> Dict[str, str]:
             continue
         new_to_old_name[glyph].append(orig)
     return new_to_old_name
-
-
-def get_glyph_cnt(src_dir: Path) -> Dict[str, int]:
-    glyph_cnt_file = Path(src_dir, 'glyph_count.json')
-    if not glyph_cnt_file.exists():
-        glyph_cnt = {}
-        for glyph_dir in sorted(SRC_DIR.iterdir()):
-            glyph_cnt[glyph_dir.name] = len(
-                [image for image in glyph_dir.iterdir()])
-        dump_json(glyph_cnt, 'glyph_count.json')
-    else:
-        glyph_cnt = json.load(open(glyph_cnt_file, 'r', encoding='utf-8'))
-    return glyph_cnt
 
 
 def get_glyph_to_files(src_dir: Path) -> Dict[str, List[str]]:
@@ -184,7 +171,7 @@ def merge_and_dump(src_dir: Path, dst_dir: Path, k: int):
     glyph_to_cnt_file = dst_dir / 'glyph_to_count_sorted.json'
     print(f'Dumping to {glyph_to_cnt_file}')
     dump_json(glyph_to_cnt, glyph_to_cnt_file)
-    
+
     merged_to_orig_file = dst_dir / 'new_to_orig_name.json'
     print(f'Dumping to {merged_to_orig_file}')
     dump_json(new_to_old_name, merged_to_orig_file)
@@ -198,12 +185,14 @@ def merge_and_dump(src_dir: Path, dst_dir: Path, k: int):
 
 
 def main():
+    # SRC_DIR = Path('/data/private/chenyingfa/chujian/glyphs')
+    DATA_DIR = Path('E:/donny/code/school/research/chujian/data')
+    src_dir = DATA_DIR / 'glyphs'
     for k in [0, 3, 10]:
         print(f'========= k = {k} =========')
-        SRC_DIR = Path('/data/private/chenyingfa/chujian/glyphs')
-        DST_DIR = Path(f'/data/private/chenyingfa/chujian/glyphs_k-{k}')
-        DST_DIR.mkdir(exist_ok=True, parents=True)
-        merge_and_dump(SRC_DIR, DST_DIR, k)
+        dst_dir = DATA_DIR / f'glyphs_k-{k}'
+        dst_dir.mkdir(exist_ok=True, parents=True)
+        merge_and_dump(src_dir, dst_dir, k)
 
 
 if __name__ == '__main__':
