@@ -112,6 +112,7 @@ class Trainer:
         self.log_file = open(ckpt_dir / "train.log", "a", encoding='utf8')
         self.train_log_file = self.log_file
         self.log("Resuming from", ckpt_dir)
+        self.train_start_time = time.time()
 
     def get_ckpt_dirs(self) -> list:
         return sorted(self.output_dir.glob("ckpt_*"))
@@ -132,6 +133,7 @@ class Trainer:
         )
         if do_resume and self.has_ckpt():
             self.resume()
+            self.cur_ep += 1
         else:
             self.cur_ep = 0
             self.log_file = open(self.train_log_path, "w", encoding='utf8')
@@ -154,27 +156,42 @@ class Trainer:
         self.train_log_file.close()
 
     def validate(self, dev_data: Dataset):
+        '''
+        Save current model as a checkpoint to `ckpt_{cur_ep}`
+        '''
         dev_dir = self.output_dir / f"ckpt_{self.cur_ep}"
         dev_dir.mkdir(exist_ok=True, parents=True)
-        self.save_ckpt(dev_dir / "ckpt.pt")
+        self.save_ckpt(dev_dir)
 
         result = self.evaluate(dev_data, dev_dir)
         del result["preds"]
         result_file = dev_dir / "result.json"
         json.dump(result, open(result_file, "w", encoding='utf8'), indent=4)
 
-    def save_ckpt(self, ckpt_file: Path):
-        print(f"Saving checkpoint to {ckpt_file}")
-        ckpt_file.parent.mkdir(exist_ok=True, parents=True)
+    def save_ckpt(self, ckpt_dir: Path):
+        print(f"Saving checkpoint to {ckpt_dir}")
+        ckpt_file = ckpt_dir / "ckpt.pt"
+        optim_file = ckpt_dir / "optim.pt"
+        scheduler_file = ckpt_dir / "scheduler.pt"
+        ckpt_dir.mkdir(exist_ok=True, parents=True)
         torch.save(self.model.state_dict(), ckpt_file)
+        torch.save(self.optimizer.state_dict(), optim_file)
+        torch.save(self.scheduler.state_dict(), scheduler_file)
 
-    def load_ckpt(self, path: Path):
-        '''Load checkpoint from a path into `self.model`'''
-        print(f"Loading checkpoint from {path}")
-        sd = torch.load(path)
-        self.model.load_state_dict(sd)
+    def load_ckpt(self, ckpt_dir: Path):
+        '''
+        Load checkpoint from a checkpoint directory.
+        Will set `self.model`, `self.optimizer`, `self.scheduler`.
+        '''
+        print(f"Loading checkpoint from {ckpt_dir}")
+        ckpt_file = ckpt_dir / "ckpt.pt"
+        optim_file = ckpt_dir / "optim.pt"
+        scheduler_file = ckpt_dir / "scheduler.pt"
+        self.model.load_state_dict(torch.load(ckpt_file))
+        self.optimizer.load_state_dict(torch.load(optim_file))
+        self.scheduler.load_state_dict(torch.load(scheduler_file))
 
-    def get_best_ckpt(self, output_dir: Path) -> Path:
+    def get_best_ckpt_dir(self, output_dir: Path) -> Path:
         '''Load the best checkpoint based on loss.'''
         ckpt_dirs = self.get_ckpt_dirs()
         if len(ckpt_dirs) == 0:
@@ -190,8 +207,8 @@ class Trainer:
         return best_ckpt_dir
 
     def load_best_ckpt(self):
-        best_ckpt_dir = self.get_best_ckpt(self.output_dir)
-        self.load_ckpt(best_ckpt_dir / "ckpt.pt")
+        best_ckpt_dir = self.get_best_ckpt_dir(self.output_dir)
+        self.load_ckpt(best_ckpt_dir)
 
     def evaluate(
         self,
@@ -199,8 +216,10 @@ class Trainer:
         output_dir: Path,
     ):
         '''
-        Perform evaluation on `self.model`, make sure you first call `load_best_ckpt` 
-        to load the best checkpoint.
+        Perform evaluation on `self.model`.
+
+        NOTE: During testing, make sure you first call `load_best_ckpt`
+        to load the checkpoint to evaluate on.
         '''
         eval_batch_size = 4 * self.batch_size
         loader = DataLoader(dataset, batch_size=eval_batch_size, shuffle=False)
