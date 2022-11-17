@@ -53,14 +53,14 @@ python3 train_vit.py --mode test
 
 ## Result
 
-| Model     | Top-1 Acc.    | Top-5 Acc.   | Top-10 Acc. |
-| ---       | ---           | ---          | ---        |
+| Model     | Top-1 Acc. | Top-3 Acc. | Top-5 Acc. | Top-10 Acc. |
+| ---       | ---        | ---        | ---        | ---         |
 | $k=3$
-| ResNet-50 |    |
-| ViT       |    |
+| ResNet-50 |  |
+| ViT       | 73.48      | 84.65      | 87.45      | 89.95       |
 | $k=10$
-| ResNet-50 | 72.60         | 87.18        | 90.57      |
-| ViT       | 90.11         | 96.06        | 97.16      |
+| ResNet-50 | 72.60      | 87.18      | 90.57      |
+| ViT       | 90.11      | 96.06      | 97.16      |
 
 > Note that ResNet and ViT are pretrained on ImageNet.
 
